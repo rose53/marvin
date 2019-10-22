@@ -15,7 +15,7 @@
         <jmock.version>2.6.0</jmock.version>
         <pi4j.version>1.0</pi4j.version>
         <weld.version>2.2.6.Final</weld.version>
-        <jetty.version>9.2.4.v20141103</jetty.version>
+        <jetty.version>9.4.21.v20190926</jetty.version>
         <resteasy.version>3.0.10.Final</resteasy.version>
     </properties>
 
