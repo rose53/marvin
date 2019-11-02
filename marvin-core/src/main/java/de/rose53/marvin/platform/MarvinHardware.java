@@ -34,9 +34,14 @@ import javax.inject.Inject;
 
 import org.slf4j.Logger;
 
+import com.pi4j.io.gpio.GpioController;
+import com.pi4j.io.gpio.GpioPinDigitalOutput;
+import com.pi4j.io.gpio.PinState;
+import com.pi4j.io.gpio.RaspiPin;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
+import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
 import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
@@ -71,6 +76,8 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     static private final int COMMAND_READ_MECANUM_MOTOR_INFO = 65;
     static private final int COMMAND_READ_DISTANCE = 66;
 
+    static final int DEAD_ZONE = 5;
+
     private byte ch1 = 0;
     private byte ch3 = 0;
     private byte ch4 = 0;
@@ -93,18 +100,27 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     @Inject
     Event<ReadDistanceEvent> readDistanceEvent;
 
+    @Inject
+    private GpioController gpio;
+
     private I2CBus bus;
     private I2CDevice device;
+
+    private GpioPinDigitalOutput resetPin;
 
     @PostConstruct
     public void init() {
         try {
+
+            resetPin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_07, "Reset Pin", PinState.HIGH);
+
+
             bus = I2CFactory.getInstance(I2CBus.BUS_1);
             device = bus.getDevice(ARDUINO_I2C_ADDRESS);
             byte zero = 0;
             mecanumDrive(zero,zero,zero);
-            clientProcessingPool.scheduleAtFixedRate(new ReadDataTask(), 30, 4, TimeUnit.SECONDS);
-        } catch (IOException e) {
+            // clientProcessingPool.scheduleAtFixedRate(new ReadDataTask(), 30, 4, TimeUnit.SECONDS);
+        } catch (IOException | UnsupportedBusNumberException e) {
             logger.error("init:",e);
         }
     }
@@ -112,6 +128,16 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     @PreDestroy
     public void desproy() {
         clientProcessingPool.shutdown();
+    }
+
+
+    private void resetI2C() {
+        resetPin.low();
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+        }
+        resetPin.high();
     }
 
     public int writeReadTest(byte[] data) throws IOException {
@@ -149,10 +175,10 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     }
 
     private boolean isChanged(byte oldValue, byte newValue) {
-        if (newValue < oldValue - 2) {
+        if (newValue < oldValue - DEAD_ZONE) {
             return true;
         }
-        if (newValue > oldValue + 2) {
+        if (newValue > oldValue + DEAD_ZONE) {
             return true;
         }
         return false;
@@ -170,9 +196,11 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
             this.ch3 = ch3;
             this.ch4 = ch4;
             controlMotors(ch1, ch3, ch4);
-            Thread.sleep(50);
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             logger.error("mecanumDrive:",e);
+            logger.error("mecanumDrive: reset I2C....");
+            resetI2C();
+            logger.error("mecanumDrive: done.");
         }
     }
 

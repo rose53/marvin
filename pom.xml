@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.rose53</groupId>
     <artifactId>marvin</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Marvin Parent</name>
 
@@ -13,7 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>1.7.2</slf4j.version>
         <jmock.version>2.6.0</jmock.version>
-        <pi4j.version>1.0</pi4j.version>
+        <pi4j.version>1.2</pi4j.version>
         <weld.version>2.2.6.Final</weld.version>
         <jetty.version>9.4.21.v20190926</jetty.version>
         <resteasy.version>3.0.10.Final</resteasy.version>
@@ -37,29 +37,6 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-site-plugin</artifactId>
                     <version>3.4</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-assembly-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>jar-with-dependencies</id>
-                            <phase>prepare-package</phase>
-                            <goals>
-                                <goal>single</goal>
-                            </goals>
-                            <configuration>
-                                <finalName>marvin</finalName>
-                                <descriptor>src/main/assembly/assembly.xml</descriptor>
-                                <appendAssemblyId>false</appendAssemblyId>
-                                <archive>
-                                    <manifest>
-                                        <mainClass>de.rose53.pi.PCD8544Example</mainClass>
-                                    </manifest>
-                                </archive>
-                            </configuration>
-                        </execution>
-                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -183,6 +160,11 @@
                 <groupId>org.jboss.resteasy</groupId>
                 <artifactId>resteasy-servlet-initializer</artifactId>
                 <version>${resteasy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.jinput</groupId>
+                <artifactId>jinput</artifactId>
+                <version>2.0.9</version>
             </dependency>
 
             <dependency>

@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import de.rose53.marvin.events.ReadDistanceEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
-import de.rose53.marvin.joystick.JoystickSocketServer;
+import de.rose53.marvin.joystick.Joystick;
 import de.rose53.marvin.server.Webserver;
 
 /**
@@ -49,14 +49,10 @@ public class Marvin implements Runnable {
     Webserver webServer;
 
     @Inject
-    JoystickSocketServer joystickServer;
+    Joystick joystick;
 
     @Inject
     RestHelper restHelper;
-
-    public Marvin() {
-
-    }
 
     public void start() {
 
@@ -65,9 +61,12 @@ public class Marvin implements Runnable {
             webServer.start();
             System.out.println("\b\b\bdone.");
 
-            System.out.print("Starting JoystickServer ...");
-            joystickServer.start();
-            System.out.println("\b\b\bdone.");
+            System.out.print("Initializing Joystick ...");
+            if (joystick.start()) {
+                System.out.println("\b\b\bdone.");
+            } else {
+                System.out.println("\b\b\bno joystick found.");
+            }
 
         } catch (Exception e) {
             // TODO Auto-generated catch block
@@ -89,7 +88,7 @@ public class Marvin implements Runnable {
         }
         try {
             webServer.stop();
-            joystickServer.stop();
+            joystick.stop();
         } catch (Exception e) {
             logger.error("stop: ",e);
         }
@@ -114,8 +113,9 @@ public class Marvin implements Runnable {
 
     public void show() {
         Display display = displays.select(new HardwareInstance()).get();
-
-        display.welcome();
+        if (display != null) {
+            display.welcome();
+        }
     }
 
 
@@ -126,15 +126,17 @@ public class Marvin implements Runnable {
     public void onReadMecanumMotorInfoEvent(@Observes ReadMecanumMotorInfoEvent event) {
         logger.debug("onReadMecanumMotorInfoEvent: ");
         Display display = displays.select(new HardwareInstance()).get();
-
-        display.motorInformation(event.getReadMecanumMotorInfo());
+        if (display != null) {
+            display.motorInformation(event.getReadMecanumMotorInfo());
+        }
     }
 
     public void onReadDistanceEvent(@Observes ReadDistanceEvent event) {
         logger.debug("onReadMecanumCurrentEvent: ");
         Display display = displays.select(new HardwareInstance()).get();
-
-        display.distance(event.getDistance());
+        if (display != null) {
+            display.distance(event.getDistance());
+        }
     }
 
     public static void main(String[] args) {

@@ -54,7 +54,7 @@ import de.rose53.marvin.utils.ByteUtils;
  *
  */
 @ApplicationScoped
-@Hardware(Hardware.hw.PI)
+//@Hardware(Hardware.hw.PI)
 public class Pcd8544LcdDisplay implements LCD, Display {
 
     private final static int SPEED = 4000000;

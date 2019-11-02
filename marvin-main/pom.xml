@@ -4,7 +4,7 @@
     <parent>
         <groupId>de.rose53</groupId>
         <artifactId>marvin</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>marvin-main</artifactId>
 
@@ -25,6 +25,8 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
+                            <stripVersion>true</stripVersion>
+                            <includeScope>runtime</includeScope>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>
@@ -38,8 +40,13 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
+                            <classpathLayoutType>custom</classpathLayoutType>
+                            <customClasspathLayout>lib/$${artifact.artifactId}.$${artifact.extension}</customClasspathLayout>
+                            <!--
                             <classpathPrefix>lib/</classpathPrefix>
+                             -->
                             <useUniqueVersions>false</useUniqueVersions>
+
                             <mainClass>de.rose53.marvin.Marvin</mainClass>
                         </manifest>
                     </archive>

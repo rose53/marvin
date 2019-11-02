@@ -76,7 +76,6 @@ public class Webserver {
         server.start();
 
 
-
 //        new Resource("BeanManager", new Reference("javax.enterprise.inject.spi.BeanMnanager",
 //                "org.jboss.weld.resources.ManagerObjectFactory", null));
         //server.join();
