@@ -1,1 +1,7 @@
 /.project
+/marvin-core/.settings/org.eclipse.core.resources.prefs
+/marvin-core/.settings/org.eclipse.jdt.core.prefs
+/marvin-main/.settings/org.eclipse.core.resources.prefs
+/marvin-main/.settings/org.eclipse.jdt.core.prefs
+/marvin-server/.settings/org.eclipse.core.resources.prefs
+/marvin-server/.settings/org.eclipse.jdt.core.prefs

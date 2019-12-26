@@ -23,12 +23,20 @@ package de.rose53.marvin.platform;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Enumeration;
 import java.util.Map;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+
+import org.slf4j.Logger;
 
 import com.pi4j.component.lcd.LCD;
 import com.pi4j.component.lcd.LCDBase;
@@ -54,7 +62,7 @@ import de.rose53.marvin.utils.ByteUtils;
  *
  */
 @ApplicationScoped
-//@Hardware(Hardware.hw.PI)
+@Hardware(Hardware.hw.PI)
 public class Pcd8544LcdDisplay implements LCD, Display {
 
     private final static int SPEED = 4000000;
@@ -65,6 +73,9 @@ public class Pcd8544LcdDisplay implements LCD, Display {
 
     private final static int ROWS           = Pcd8544DisplayBuffer.HEIGHT / (Pcd8544Font.CHAR_HEIGHT + 1);
     private final static int COLUMNS        = Pcd8544DisplayBuffer.WIDTH / (Pcd8544Font.CHAR_WIDTH + 1);
+
+    @Inject
+    Logger logger;
 
     @Inject
     private GpioController gpio;
@@ -566,6 +577,15 @@ public class Pcd8544LcdDisplay implements LCD, Display {
     @Override
     public void welcome() {
         write(0, "Don't panic.");
+        try {
+
+            InetAddress adress = getFirstNonLoopbackAddress(true, false);
+            if (adress != null) {
+                write(1, adress.getHostAddress());
+            }
+        } catch (SocketException e) {
+            logger.error("welcome:",e);
+        }
     }
 
     @Override
@@ -578,8 +598,31 @@ public class Pcd8544LcdDisplay implements LCD, Display {
 
     @Override
     public void distance(int distance) {
-        write(1,"Distance:" + distance + "cm   ");
+        //write(1,"Distance:" + distance + "cm   ");
     }
 
-
+    private InetAddress getFirstNonLoopbackAddress(boolean preferIpv4, boolean preferIPv6) throws SocketException {
+        Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
+        while (en.hasMoreElements()) {
+            NetworkInterface i = (NetworkInterface) en.nextElement();
+            for (Enumeration<InetAddress> en2 = i.getInetAddresses(); en2.hasMoreElements();) {
+                InetAddress addr = (InetAddress) en2.nextElement();
+                if (!addr.isLoopbackAddress()) {
+                    if (addr instanceof Inet4Address) {
+                        if (preferIPv6) {
+                            continue;
+                        }
+                        return addr;
+                    }
+                    if (addr instanceof Inet6Address) {
+                        if (preferIpv4) {
+                            continue;
+                        }
+                        return addr;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }

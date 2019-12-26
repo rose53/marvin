@@ -20,6 +20,7 @@
  */
 package de.rose53.marvin.server;
 
+import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
@@ -28,11 +29,16 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import org.slf4j.Logger;
+
 import de.rose53.marvin.RestHelper;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
 public class PlatformResource {
+
+    @Inject
+    Logger logger;
 
     @PUT
     @Path("/mecanum")

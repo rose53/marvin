@@ -69,15 +69,14 @@ public class Marvin implements Runnable {
             }
 
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.error("start:",e);
         }
         show();
 
         System.out.println("\n\n ####################################################### ");
         System.out.println(" ####                MARVIN IS ALIVE !!!             ### ");
         System.out.println(" ####################################################### ");
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-mm-yy hh:mm:ss");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy hh:mm:ss");
         System.out.println(" ### Date: " + dateFormat.format(new Date()));
         running = true;
     }

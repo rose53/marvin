@@ -53,7 +53,8 @@ public class Joystick implements Runnable {
             return false;
         }
 
-        Thread serverThread = new Thread(this);
+        Thread serverThread = new Thread(this,"Joystick");
+        serverThread.setPriority(Thread.MAX_PRIORITY - 1);
         serverThread.start();
 
         return true;
