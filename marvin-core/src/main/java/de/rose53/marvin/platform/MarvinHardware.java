@@ -20,11 +20,11 @@
 */
 package de.rose53.marvin.platform;
 
-import java.io.IOException;
+import static jssc.SerialPort.*;
+
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -34,18 +34,14 @@ import javax.inject.Inject;
 
 import org.slf4j.Logger;
 
-import com.pi4j.io.gpio.GpioController;
-import com.pi4j.io.gpio.GpioPinDigitalOutput;
-import com.pi4j.io.gpio.PinState;
-import com.pi4j.io.gpio.RaspiPin;
-import com.pi4j.io.i2c.I2CBus;
-import com.pi4j.io.i2c.I2CDevice;
-import com.pi4j.io.i2c.I2CFactory;
-import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
+import jssc.SerialPort;
+import jssc.SerialPortEvent;
+import jssc.SerialPortEventListener;
+import jssc.SerialPortException;
+
 
 import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
-import de.rose53.marvin.PanTiltSensors;
 import de.rose53.marvin.ReadMecanumMotorInfo;
 import de.rose53.marvin.events.ReadDistanceEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
@@ -58,25 +54,9 @@ import de.rose53.marvin.utils.ByteUtils;
  */
 @ApplicationScoped
 @Hardware(Hardware.hw.PI)
-public class MarvinHardware implements MecanumDrive, PanTiltSensors {
+public class MarvinHardware implements Runnable, MecanumDrive {
 
-    static private final int ARDUINO_I2C_ADDRESS = 0x04;
-
-    static private final int COMMAND_WRITE_CONTROL_MOTORS = 3;
-    static private final int COMMAND_WRITE_PAN_TILT = 4;
-    static private final int COMMAND_WRITE_PAN = 5;
-    static private final int COMMAND_WRITE_TILT = 6;
-    static private final int COMMAND_WRITE_INC_PAN = 7;
-    static private final int COMMAND_WRITE_DEC_PAN = 8;
-    static private final int COMMAND_WRITE_INC_TILT = 9;
-    static private final int COMMAND_WRITE_DEC_TILT = 10;
-
-
-    static private final int COMMAND_READ_CURRENT = 64;
-    static private final int COMMAND_READ_MECANUM_MOTOR_INFO = 65;
-    static private final int COMMAND_READ_DISTANCE = 66;
-
-    static final int DEAD_ZONE = 5;
+    private boolean shouldRun = true;
 
     private byte ch1 = 0;
     private byte ch3 = 0;
@@ -86,7 +66,7 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     private ReadMecanumMotorInfo[] oldReadMecanumMotorInfo = new ReadMecanumMotorInfo[4];
     private int oldDistance = 0;
 
-    final ScheduledExecutorService clientProcessingPool = Executors.newScheduledThreadPool(1);
+    private LatestUniqueQueue<Message> sendQueue = new LatestUniqueQueue<Message>();
 
     @Inject
     Logger logger;
@@ -101,84 +81,48 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
     Event<ReadDistanceEvent> readDistanceEvent;
 
     @Inject
-    private GpioController gpio;
+    Event<MECCurrentMessage> mecanumCurrentMessage;
 
-    private I2CBus bus;
-    private I2CDevice device;
-
-    private GpioPinDigitalOutput resetPin;
+    private SerialPort serialPort;
 
     @PostConstruct
     public void init() {
+
         try {
 
-            resetPin = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_07, "Reset Pin", PinState.HIGH);
+            serialPort = new SerialPort("/dev/ttyAMA0");
 
+            serialPort.openPort();
+            serialPort.setParams(BAUDRATE_57600,DATABITS_8,STOPBITS_1,PARITY_NONE);
+            serialPort.setEventsMask(MASK_RXCHAR);
+            serialPort.addEventListener(new SerialPortReader());
 
-            bus = I2CFactory.getInstance(I2CBus.BUS_1);
-            device = bus.getDevice(ARDUINO_I2C_ADDRESS);
+            Thread serverThread = new Thread(this,"Send messages");
+
+            serverThread.start();
+
             byte zero = 0;
             mecanumDrive(zero,zero,zero);
-            // clientProcessingPool.scheduleAtFixedRate(new ReadDataTask(), 30, 4, TimeUnit.SECONDS);
-        } catch (IOException | UnsupportedBusNumberException e) {
+        } catch (SerialPortException e) {
             logger.error("init:",e);
         }
     }
 
     @PreDestroy
-    public void desproy() {
-        clientProcessingPool.shutdown();
-    }
-
-
-    private void resetI2C() {
-        resetPin.low();
+    public void destroy() {
+        shouldRun = false;
         try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
+            serialPort.closePort();
+        } catch (SerialPortException e) {
+            logger.error("destroy:",e);
         }
-        resetPin.high();
-    }
-
-    public int writeReadTest(byte[] data) throws IOException {
-        device.write(data,0,data.length);
-        return device.read();
-    }
-
-    synchronized public void controlMotors(short[] controlData) throws IOException {
-
-        byte[] data = new byte[9];
-
-        data[0] = 1;
-        System.arraycopy(ByteUtils.toUnsignedByte(controlData), 0, data, 1, controlData.length);
-        device.write(data,0,data.length);
-    }
-
-    synchronized public void controlMotors(byte[] controlData) throws IOException {
-
-        byte[] data = new byte[5];
-
-        data[0] = 2;
-        System.arraycopy(controlData, 0, data, 1, controlData.length);
-        device.write(data,0,data.length);
-    }
-
-    synchronized public void controlMotors(byte ch1, byte ch3, byte ch4) throws IOException {
-
-        byte[] data = new byte[3];
-
-        data[0] = ch1;
-        data[1] = ch3;
-        data[2] = ch4;
-
-        device.write(COMMAND_WRITE_CONTROL_MOTORS,data,0,data.length);
     }
 
     private boolean isChanged(byte oldValue, byte newValue) {
-        if (newValue < oldValue - DEAD_ZONE) {
+        if (newValue < oldValue - 2) {
             return true;
         }
-        if (newValue > oldValue + DEAD_ZONE) {
+        if (newValue > oldValue + 2) {
             return true;
         }
         return false;
@@ -186,22 +130,17 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
 
     @Override
     public void mecanumDrive(byte ch1, byte ch3, byte ch4) {
-        try {
-            if (    !isChanged(this.ch1,ch1)
-                 && !isChanged(this.ch3,ch3)
-                 && !isChanged(this.ch4,ch4)) {
-                return;
-            }
-            this.ch1 = ch1;
-            this.ch3 = ch3;
-            this.ch4 = ch4;
-            controlMotors(ch1, ch3, ch4);
-        } catch (IOException e) {
-            logger.error("mecanumDrive:",e);
-            logger.error("mecanumDrive: reset I2C....");
-            resetI2C();
-            logger.error("mecanumDrive: done.");
+        if (    !isChanged(this.ch1,ch1)
+             && !isChanged(this.ch3,ch3)
+             && !isChanged(this.ch4,ch4)) {
+            return;
         }
+        this.ch1 = ch1;
+        this.ch3 = ch3;
+        this.ch4 = ch4;
+        logger.debug("mecanumDrive: ch1,ch3,ch4 = >{},{},{}<",ch1,ch3,ch4);
+        MECJoystickMessage message = new MECJoystickMessage(ch1, ch3, ch4);
+        sendQueue.add(message);
     }
 
     /**
@@ -212,17 +151,17 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
         logger.debug("getCurrent:");
         byte[] buffer = new byte[8];
         short[] retVal = new short[4];
-        try {
-            device.read(COMMAND_READ_CURRENT, buffer, 0, buffer.length);
+        //try {
+            //device.read(COMMAND_READ_CURRENT, buffer, 0, buffer.length);
 
             for (int i = 0, j = retVal.length; i < j; i++) {
                 logger.debug("getCurrent: msb = {}, lsb = {}",buffer[2 * i + 1],buffer[2 * i]);
                 retVal[i] = ByteUtils.toShort(Arrays.copyOfRange(buffer,2 * i,2 * i + 2));
                 logger.debug("getCurrent: retVal[{}] = {}",i,retVal[i]);
             }
-        } catch (IOException e) {
+        /*} catch (IOException e) {
             logger.error("getCurrent:",e);
-        }
+        }*/
         return retVal;
     }
 
@@ -234,93 +173,22 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
         logger.debug("getReadMecanumMotorInfo:");
         byte[] buffer = new byte[12];
         ReadMecanumMotorInfo[] retVal = new ReadMecanumMotorInfo[4];
-        try {
-            device.read(COMMAND_READ_MECANUM_MOTOR_INFO, buffer, 0, buffer.length);
+        //try {
+            //device.read(COMMAND_READ_MECANUM_MOTOR_INFO, buffer, 0, buffer.length);
 
             for (int i = 0, j = retVal.length; i < j; i++) {
                 logger.debug("getReadMecanumMotorInfo: direction = {}, msb = {}, lsb = {}",buffer[3 * i],buffer[3 * i + 2],buffer[3 * i + 1]);
                 retVal[i] = new ReadMecanumMotorInfo(buffer[3 * i] > 0,ByteUtils.toShort(Arrays.copyOfRange(buffer,3 * i + 1,3 * i + 3)));
                 logger.debug("getReadMecanumMotorInfo: retVal[{}] = {}",i,retVal[i]);
             }
-        } catch (IOException e) {
+        /*} catch (IOException e) {
             logger.error("getReadMecanumMotorInfo:",e);
-        }
+        }*/
         return retVal;
     }
 
-    @Override
-    synchronized public void setPanTilt(short pan, short tilt) {
-        logger.debug("setPanTilt: pan = >{}<, tilt = >{}<",pan,tilt);
-        byte[] buffer = new byte[2];
-        buffer[0] = ByteUtils.toUnsignedByte(pan);
-        buffer[1] = ByteUtils.toUnsignedByte(tilt);
-        try {
-            device.write(COMMAND_WRITE_PAN_TILT, buffer, 0, buffer.length);
-        } catch (IOException e) {
-            logger.error("setPanTilt:",e);
-        }
-    }
 
-    @Override
-    synchronized public void setPan(short pan) {
-        logger.debug("setPan: pan = >{}<",pan);
-        try {
-            device.write(COMMAND_WRITE_PAN, ByteUtils.toUnsignedByte(pan));
-        } catch (IOException e) {
-            logger.error("setPan:",e);
-        }
-    }
-
-    @Override
-    synchronized public void setTilt(short tilt) {
-        logger.debug("setTilt: tilt = >{}<",tilt);
-        try {
-            device.write(COMMAND_WRITE_TILT, ByteUtils.toUnsignedByte(tilt));
-        } catch (IOException e) {
-            logger.error("setTilt:",e);
-        }
-    }
-
-    @Override
-    synchronized public void incrementPan(short increment) {
-        logger.debug("incrementPan: increment = >{}<",increment);
-        try {
-            device.write(COMMAND_WRITE_INC_PAN, ByteUtils.toUnsignedByte(increment));
-        } catch (IOException e) {
-            logger.error("incrementPan:",e);
-        }
-    }
-
-    @Override
-    synchronized public void decrementPan(short decrement) {
-        logger.debug("decrementPan: decrement = >{}<",decrement);
-        try {
-            device.write(COMMAND_WRITE_DEC_PAN, ByteUtils.toUnsignedByte(decrement));
-        } catch (IOException e) {
-            logger.error("decrementPan:",e);
-        }
-    }
-
-    @Override
-    synchronized public void incrementTilt(short increment) {
-        logger.debug("incrementTilt: increment = >{}<",increment);
-        try {
-            device.write(COMMAND_WRITE_INC_TILT, ByteUtils.toUnsignedByte(increment));
-        } catch (IOException e) {
-            logger.error("incrementTilt:",e);
-        }
-    }
-
-    @Override
-    synchronized public void decrementTilt(short decrement) {
-        logger.debug("decrementTilt: decrement = >{}<",decrement);
-        try {
-            device.write(COMMAND_WRITE_DEC_TILT, ByteUtils.toUnsignedByte(decrement));
-        } catch (IOException e) {
-            logger.error("decrementTilt:",e);
-        }
-    }
-
+/*
     @Override
     synchronized public int getDistance() {
         logger.debug("getReadMecanumMotorInfo:");
@@ -336,20 +204,13 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
         }
         return retVal;
     }
-
+*/
     private class ReadDataTask implements Runnable {
 
         @Override
         public void run() {
             try {
 
-                short[] current = getCurrent();
-                // check, if the values have changed
-                if (!Arrays.equals(oldCurrent, current)) {
-                    readMecanumCurrentEvent.fire(new ReadMecanumCurrentEvent(current));
-                    oldCurrent = Arrays.copyOf(current,current.length);
-                }
-                Thread.sleep(50);
                 ReadMecanumMotorInfo[] readMecanumMotorInfo = getReadMecanumMotorInfo();
                 // 	check, if the values have changed
                 if (!Arrays.equals(oldReadMecanumMotorInfo, readMecanumMotorInfo)) {
@@ -357,7 +218,7 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
                     oldReadMecanumMotorInfo = Arrays.copyOf(readMecanumMotorInfo,readMecanumMotorInfo.length);
                 }
                 Thread.sleep(50);
-                int distance = getDistance();
+                int distance = 0 /*getDistance()*/;
                 if (oldDistance != distance) {
                     readDistanceEvent.fire(new ReadDistanceEvent(distance));
                     oldDistance = distance;
@@ -370,4 +231,66 @@ public class MarvinHardware implements MecanumDrive, PanTiltSensors {
 
     }
 
+    class SerialPortReader implements SerialPortEventListener {
+
+        private byte[] dataBuffer = new byte[1024];
+        private int    dataBufferIdx = 0;
+
+        @Override
+        public void serialEvent(SerialPortEvent event) {
+            if (event.isRXCHAR()) {//If data is available
+                if (event.getEventValue() > 0) {//Check bytes count in the input buffer
+
+                    try {
+                        byte buffer[] = serialPort.readBytes(event.getEventValue());
+                        logger.trace("serialEvent: buffer = >{}<",new String(buffer));
+                        for (byte b : buffer) {
+                            if (b != '\n') {
+                                dataBuffer[dataBufferIdx++] = b;
+                            } else {
+                                String messageString = new String(dataBuffer,0,dataBufferIdx -1);
+                                dataBufferIdx = 0;     // next byte goes to the start, because it is a new message
+                                logger.debug("serialEvent: messageString = >{}<",messageString);
+                                Message m = Message.build(messageString.trim());
+                                if (m != null) {
+
+                                    if  (EMessageType.MEC_CURR == m.getMessageType()) {
+                                        MECCurrentMessage mecCurrentMessage = (MECCurrentMessage)m;
+                                        mecanumCurrentMessage.fire(mecCurrentMessage);
+                                        short[] current = mecCurrentMessage.getCurrent();
+                                        if (!Arrays.equals(oldCurrent, current)) {
+                                            readMecanumCurrentEvent.fire(new ReadMecanumCurrentEvent(current));
+                                            oldCurrent = Arrays.copyOf(current,current.length);
+                                        }
+                                    }
+
+
+                                }
+                            }
+                        }
+                    } catch (SerialPortException | InvalidMessageException | ChecksumErrorMessageException ex) {
+                        logger.error("serialEvent: ",ex);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        while (shouldRun) {
+            try {
+                if (!sendQueue.isEmpty()) {
+                    // send one message
+                    Message m = sendQueue.poll();
+                    logger.debug("controlMotors: message = >{}<",m.getTerminatedMessageString());
+                    serialPort.writeString(m.getTerminatedMessageString());
+                }
+
+                Thread.sleep(50);
+            } catch (InterruptedException | SerialPortException e) {
+                logger.error("run: error while sending message",e);
+            }
+        }
+    }
 }

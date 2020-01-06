@@ -2,9 +2,6 @@ package de.rose53.marvin.joystick;
 
 import static net.java.games.input.Component.Identifier.Axis;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
@@ -42,8 +39,6 @@ public class Joystick implements Runnable {
     @Inject
     Controller controller;
 
-    final ExecutorService clientProcessingPool = Executors.newSingleThreadExecutor();
-
     private boolean shouldRun = true;
 
     public boolean start() {
@@ -54,7 +49,7 @@ public class Joystick implements Runnable {
         }
 
         Thread serverThread = new Thread(this,"Joystick");
-        serverThread.setPriority(Thread.MAX_PRIORITY - 1);
+
         serverThread.start();
 
         return true;

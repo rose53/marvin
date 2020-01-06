@@ -36,9 +36,9 @@ public class Marvin implements Runnable {
 
     private boolean running;
 
-    @Inject
-    @Any
-    Instance<PanTiltSensors> panTiltSensors;
+    //@Inject
+    //@Any
+    //Instance<PanTiltSensors> panTiltSensors;
 
     @Inject
     @Any
@@ -98,8 +98,8 @@ public class Marvin implements Runnable {
         start();
 
         // set the servos
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
-        panTilt.setPanTilt((short)90,(short)170);
+        //PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
+        //panTilt.setPanTilt((short)90,(short)170);
 
         while (running) {
             try {

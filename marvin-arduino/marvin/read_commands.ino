@@ -1,28 +1,3 @@
-/*
- * Reads the current from the mecanum drive and stores the values in an array
- */
-void readCommand64() {
-
-  uint8_t buffer[8];
-
-  int tmpCurrent = mecanumDrive.getCurrent(FRONT_LEFT);
-  buffer[1] = tmpCurrent >> 8;
-  buffer[0] = tmpCurrent & 0xff;
-
-  tmpCurrent = mecanumDrive.getCurrent(REAR_LEFT);
-  buffer[3] = tmpCurrent >> 8;
-  buffer[2] = tmpCurrent & 0xff;
-
-  tmpCurrent = mecanumDrive.getCurrent(FRONT_RIGHT);
-  buffer[5] = tmpCurrent >> 8;
-  buffer[4] = tmpCurrent & 0xff;
-
-  tmpCurrent = mecanumDrive.getCurrent(REAR_RIGHT);
-  buffer[7] = tmpCurrent >> 8;
-  buffer[6] = tmpCurrent & 0xff;
-
-  Wire.write(buffer, 8);
-}
 
 /*
  *
