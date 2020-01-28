@@ -1,8 +1,15 @@
 package de.rose53.marvin.platform;
 
+import java.util.StringJoiner;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import de.rose53.marvin.platform.message.HDGMessage;
+import de.rose53.marvin.platform.message.MECCurrentMessage;
+import de.rose53.marvin.platform.message.MECInfoMessage;
+import de.rose53.marvin.platform.message.USMessage;
 
 /**
  *
@@ -53,12 +60,17 @@ public abstract class Message {
         // first part is message type
         if ("US".equalsIgnoreCase(messageParts[0])) {
             retVal = new USMessage(messageParts[1], Integer.parseInt(messageParts[3]));
-        } else if ("MAG".equalsIgnoreCase(messageParts[0])) {
-            retVal = new MAGMessage(messageParts[1],Float.parseFloat(messageParts[3]));
+        } else if ("HDG".equalsIgnoreCase(messageParts[0])) {
+            retVal = new HDGMessage(messageParts[1],Float.parseFloat(messageParts[3]));
         } else if ("MEC_CURR".equalsIgnoreCase(messageParts[0])) {
             logger.debug("build: ");
             retVal = new MECCurrentMessage(Integer.parseInt(messageParts[3]), Integer.parseInt(messageParts[4]),
                                            Integer.parseInt(messageParts[5]), Integer.parseInt(messageParts[6]));
+        } else if ("MEC_INFO".equalsIgnoreCase(messageParts[0])) {
+            retVal = new MECInfoMessage(Integer.parseInt(messageParts[3]) > 0, Short.parseShort(messageParts[4]),
+                                        Integer.parseInt(messageParts[5]) > 0, Short.parseShort(messageParts[6]),
+                                        Integer.parseInt(messageParts[7]) > 0, Short.parseShort(messageParts[8]),
+                                        Integer.parseInt(messageParts[9]) > 0, Short.parseShort(messageParts[10]));
         }
 
 
@@ -66,6 +78,16 @@ public abstract class Message {
             retVal.setMessageUid(messageParts[2]);
         }
         return retVal;
+    }
+
+    protected String getMessageHeader()  {
+        StringJoiner sj = new StringJoiner(",");
+
+        sj.add(getMessageType().toString())
+          .add(getMessageId())
+          .add(getMessageUid());
+
+        return sj.toString();
     }
 
     public final String getMessageString() {

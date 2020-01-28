@@ -18,7 +18,7 @@ import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import org.slf4j.Logger;
 
-import de.rose53.marvin.events.ReadDistanceEvent;
+import de.rose53.marvin.events.DistanceEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 import de.rose53.marvin.joystick.Joystick;
@@ -39,6 +39,10 @@ public class Marvin implements Runnable {
     //@Inject
     //@Any
     //Instance<PanTiltSensors> panTiltSensors;
+
+    @Inject
+    @Any
+    Instance<MecanumDrive> mecanumDrives;
 
     @Inject
     @Any
@@ -67,7 +71,9 @@ public class Marvin implements Runnable {
             } else {
                 System.out.println("\b\b\bno joystick found.");
             }
-
+            // open communication
+            MecanumDrive mecanumDrive = mecanumDrives.select(new HardwareInstance()).get();
+            mecanumDrive.getCurrent();
         } catch (Exception e) {
             logger.error("start:",e);
         }
@@ -130,7 +136,7 @@ public class Marvin implements Runnable {
         }
     }
 
-    public void onReadDistanceEvent(@Observes ReadDistanceEvent event) {
+    public void onReadDistanceEvent(@Observes DistanceEvent event) {
         logger.debug("onReadMecanumCurrentEvent: ");
         Display display = displays.select(new HardwareInstance()).get();
         if (display != null) {

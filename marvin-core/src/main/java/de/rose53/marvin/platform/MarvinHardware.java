@@ -21,10 +21,14 @@
 package de.rose53.marvin.platform;
 
 import static jssc.SerialPort.*;
+import static de.rose53.marvin.platform.EMessageType.*;
 
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -32,21 +36,28 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
-
-
+import de.rose53.marvin.Compass;
 import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
 import de.rose53.marvin.ReadMecanumMotorInfo;
-import de.rose53.marvin.events.ReadDistanceEvent;
+import de.rose53.marvin.events.DistanceEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
-import de.rose53.marvin.utils.ByteUtils;
+import de.rose53.marvin.platform.message.CloseMessage;
+import de.rose53.marvin.platform.message.GetMessage;
+import de.rose53.marvin.platform.message.HDGMessage;
+import de.rose53.marvin.platform.message.MECCurrentMessage;
+import de.rose53.marvin.platform.message.MECInfoMessage;
+import de.rose53.marvin.platform.message.MECJoystickMessage;
+import de.rose53.marvin.platform.message.OpenMessage;
+import de.rose53.marvin.platform.message.USMessage;
 
 /**
  * @author rose
@@ -54,7 +65,7 @@ import de.rose53.marvin.utils.ByteUtils;
  */
 @ApplicationScoped
 @Hardware(Hardware.hw.PI)
-public class MarvinHardware implements Runnable, MecanumDrive {
+public class MarvinHardware implements Runnable, MecanumDrive, Compass {
 
     private boolean shouldRun = true;
 
@@ -63,10 +74,12 @@ public class MarvinHardware implements Runnable, MecanumDrive {
     private byte ch4 = 0;
 
     private short[] oldCurrent = new short[4];
-    private ReadMecanumMotorInfo[] oldReadMecanumMotorInfo = new ReadMecanumMotorInfo[4];
     private int oldDistance = 0;
 
-    private LatestUniqueQueue<Message> sendQueue = new LatestUniqueQueue<Message>();
+    private LatestUniqueQueue<Message> sendQueue       = new LatestUniqueQueue<>();
+
+    private ScheduledExecutorService              getMessageQueueExecutor = Executors.newScheduledThreadPool(1);
+    private BlockingQueue<GetEventQueueEntry>     getMessageQueue         = new LinkedBlockingQueue<>(512);
 
     @Inject
     Logger logger;
@@ -78,7 +91,7 @@ public class MarvinHardware implements Runnable, MecanumDrive {
     Event<ReadMecanumMotorInfoEvent> readMecanumMotorInfoEvent;
 
     @Inject
-    Event<ReadDistanceEvent> readDistanceEvent;
+    Event<DistanceEvent> readDistanceEvent;
 
     @Inject
     Event<MECCurrentMessage> mecanumCurrentMessage;
@@ -101,9 +114,16 @@ public class MarvinHardware implements Runnable, MecanumDrive {
 
             serverThread.start();
 
+            sendQueue.add(OpenMessage.OPEN);
+
+            TimeUnit.SECONDS.sleep(2);
+
             byte zero = 0;
             mecanumDrive(zero,zero,zero);
-        } catch (SerialPortException e) {
+
+            getMessageQueueExecutor.scheduleAtFixedRate(() -> getMessageQueue.removeIf(e -> System.currentTimeMillis() - e.timestamp > 10000 ), 10, 10, TimeUnit.SECONDS);
+
+        } catch (SerialPortException | InterruptedException e) {
             logger.error("init:",e);
         }
     }
@@ -112,8 +132,13 @@ public class MarvinHardware implements Runnable, MecanumDrive {
     public void destroy() {
         shouldRun = false;
         try {
+            sendQueue.add(CloseMessage.CLOSE);
+
+            TimeUnit.SECONDS.sleep(5);
+
             serialPort.closePort();
-        } catch (SerialPortException e) {
+            getMessageQueueExecutor.shutdown();
+        } catch (SerialPortException | InterruptedException e) {
             logger.error("destroy:",e);
         }
     }
@@ -143,26 +168,47 @@ public class MarvinHardware implements Runnable, MecanumDrive {
         sendQueue.add(message);
     }
 
+    @SuppressWarnings("unchecked")
+    private <T extends Message> T readGetResponse(String messageUid) {
+        logger.debug("readGetResponse: reading response message for messageUid = >{}<",messageUid);
+        T response = null;
+
+        long actTime = System.currentTimeMillis();
+        do {
+            try {
+                TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+            }
+            GetEventQueueEntry entry = getMessageQueue.peek();
+            if (entry != null && messageUid.equalsIgnoreCase(entry.message.getMessageUid())) {
+                logger.debug("getCurrent: found our response message");
+                getMessageQueue.remove(entry);
+                response = (T) entry.message;
+                break;
+            }
+        } while (System.currentTimeMillis() - actTime < 10000);
+        logger.debug("readGetResponse: resonse for messageUid >{}< {} found",messageUid,(response == null?"not ":""));
+
+        return response;
+    }
+
+
     /**
      * Reads the current from the motors
      */
     @Override
-    synchronized public short[] getCurrent() {
+    public short[] getCurrent() {
         logger.debug("getCurrent:");
-        byte[] buffer = new byte[8];
-        short[] retVal = new short[4];
-        //try {
-            //device.read(COMMAND_READ_CURRENT, buffer, 0, buffer.length);
 
-            for (int i = 0, j = retVal.length; i < j; i++) {
-                logger.debug("getCurrent: msb = {}, lsb = {}",buffer[2 * i + 1],buffer[2 * i]);
-                retVal[i] = ByteUtils.toShort(Arrays.copyOfRange(buffer,2 * i,2 * i + 2));
-                logger.debug("getCurrent: retVal[{}] = {}",i,retVal[i]);
-            }
-        /*} catch (IOException e) {
-            logger.error("getCurrent:",e);
-        }*/
-        return retVal;
+        GetMessage message = new GetMessage(GET_MEC_CURR);
+        sendQueue.add(message);
+
+        MECCurrentMessage response = readGetResponse(message.getMessageUid());
+
+        if (response == null) {
+            return null;
+        }
+        return response.getCurrent();
     }
 
     /**
@@ -171,61 +217,40 @@ public class MarvinHardware implements Runnable, MecanumDrive {
     @Override
     synchronized public ReadMecanumMotorInfo[] getReadMecanumMotorInfo() {
         logger.debug("getReadMecanumMotorInfo:");
-        byte[] buffer = new byte[12];
-        ReadMecanumMotorInfo[] retVal = new ReadMecanumMotorInfo[4];
-        //try {
-            //device.read(COMMAND_READ_MECANUM_MOTOR_INFO, buffer, 0, buffer.length);
 
-            for (int i = 0, j = retVal.length; i < j; i++) {
-                logger.debug("getReadMecanumMotorInfo: direction = {}, msb = {}, lsb = {}",buffer[3 * i],buffer[3 * i + 2],buffer[3 * i + 1]);
-                retVal[i] = new ReadMecanumMotorInfo(buffer[3 * i] > 0,ByteUtils.toShort(Arrays.copyOfRange(buffer,3 * i + 1,3 * i + 3)));
-                logger.debug("getReadMecanumMotorInfo: retVal[{}] = {}",i,retVal[i]);
-            }
-        /*} catch (IOException e) {
-            logger.error("getReadMecanumMotorInfo:",e);
-        }*/
-        return retVal;
-    }
+        GetMessage message = new GetMessage(GET_MEC_INFO);
+        sendQueue.add(message);
 
+        MECInfoMessage response = readGetResponse(message.getMessageUid());
 
-/*
-    @Override
-    synchronized public int getDistance() {
-        logger.debug("getReadMecanumMotorInfo:");
-        byte[] buffer = new byte[2];
-        int retVal = 0;
-        try {
-            device.read(COMMAND_READ_DISTANCE, buffer, 0, buffer.length);
-            logger.debug("getDistance: msb = {}, lsb = {}",buffer[1],buffer[0]);
-            retVal = ByteUtils.toShort(buffer);
-            logger.debug("getDistance: retVal = {}",retVal);
-        } catch (IOException e) {
-            logger.error("getReadMecanumMotorInfo:",e);
+        if (response == null) {
+            return null;
         }
-        return retVal;
+        return response.getReadMecanumMotorInfo();
     }
-*/
-    private class ReadDataTask implements Runnable {
 
-        @Override
-        public void run() {
-            try {
+    @Override
+    public Float getHeading() {
+        logger.debug("getHeading:");
 
-                ReadMecanumMotorInfo[] readMecanumMotorInfo = getReadMecanumMotorInfo();
-                // 	check, if the values have changed
-                if (!Arrays.equals(oldReadMecanumMotorInfo, readMecanumMotorInfo)) {
-                    readMecanumMotorInfoEvent.fire(new ReadMecanumMotorInfoEvent(readMecanumMotorInfo));
-                    oldReadMecanumMotorInfo = Arrays.copyOf(readMecanumMotorInfo,readMecanumMotorInfo.length);
-                }
-                Thread.sleep(50);
-                int distance = 0 /*getDistance()*/;
-                if (oldDistance != distance) {
-                    readDistanceEvent.fire(new ReadDistanceEvent(distance));
-                    oldDistance = distance;
-                }
-            } catch (InterruptedException e) {
-                logger.info("run:",e);
-            }
+        GetMessage message = new GetMessage(GET_HDG);
+        sendQueue.add(message);
+
+        HDGMessage response = readGetResponse(message.getMessageUid());
+        if (response == null) {
+            return null;
+        }
+        return response.getHeading();
+    }
+
+    private static class GetEventQueueEntry {
+        long    timestamp;
+        Message message;
+
+        public GetEventQueueEntry(Message message) {
+            super();
+            this.timestamp = System.currentTimeMillis();
+            this.message = message;
         }
 
 
@@ -243,7 +268,7 @@ public class MarvinHardware implements Runnable, MecanumDrive {
 
                     try {
                         byte buffer[] = serialPort.readBytes(event.getEventValue());
-                        logger.trace("serialEvent: buffer = >{}<",new String(buffer));
+                        logger.trace("serialEvent: buffer = >{}<",buffer.length > 0?new String(buffer):"");
                         for (byte b : buffer) {
                             if (b != '\n') {
                                 dataBuffer[dataBufferIdx++] = b;
@@ -253,8 +278,10 @@ public class MarvinHardware implements Runnable, MecanumDrive {
                                 logger.debug("serialEvent: messageString = >{}<",messageString);
                                 Message m = Message.build(messageString.trim());
                                 if (m != null) {
-
-                                    if  (EMessageType.MEC_CURR == m.getMessageType()) {
+                                    if (StringUtils.isNotEmpty(m.getMessageUid())) {
+                                        getMessageQueue.offer(new GetEventQueueEntry(m), 1, TimeUnit.SECONDS);
+                                    }
+                                    if  (MEC_CURR == m.getMessageType()) {
                                         MECCurrentMessage mecCurrentMessage = (MECCurrentMessage)m;
                                         mecanumCurrentMessage.fire(mecCurrentMessage);
                                         short[] current = mecCurrentMessage.getCurrent();
@@ -262,13 +289,22 @@ public class MarvinHardware implements Runnable, MecanumDrive {
                                             readMecanumCurrentEvent.fire(new ReadMecanumCurrentEvent(current));
                                             oldCurrent = Arrays.copyOf(current,current.length);
                                         }
+                                    } else if (MEC_INFO == m.getMessageType()) {
+                                        MECInfoMessage mecInfoMessage = (MECInfoMessage) m;
+                                        readMecanumMotorInfoEvent.fire(new ReadMecanumMotorInfoEvent(mecInfoMessage.getReadMecanumMotorInfo()));
+                                    } else if (US == m.getMessageType()) {
+                                        USMessage usMessage = (USMessage) m;
+                                        if (usMessage.getDistance() != oldDistance) {
+                                            readDistanceEvent.fire(new DistanceEvent(usMessage.getDistance()));
+                                            oldDistance = usMessage.getDistance();
+                                        }
                                     }
 
 
                                 }
                             }
                         }
-                    } catch (SerialPortException | InvalidMessageException | ChecksumErrorMessageException ex) {
+                    } catch (SerialPortException | InvalidMessageException | ChecksumErrorMessageException | InterruptedException ex) {
                         logger.error("serialEvent: ",ex);
                     }
                 }

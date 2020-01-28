@@ -22,7 +22,7 @@ import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
 import de.rose53.marvin.PanTiltSensors;
 import de.rose53.marvin.ReadMecanumMotorInfo;
-import de.rose53.marvin.events.ReadDistanceEvent;
+import de.rose53.marvin.events.DistanceEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 
@@ -49,7 +49,7 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
     Event<ReadMecanumMotorInfoEvent> readMecanumMotorInfoEvent;
 
     @Inject
-    Event<ReadDistanceEvent> readDistanceEvent;
+    Event<DistanceEvent> readDistanceEvent;
 
 
     @PostConstruct
@@ -153,7 +153,7 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
                 oldReadMecanumMotorInfo = Arrays.copyOf(readMecanumMotorInfo,readMecanumMotorInfo.length);
             }
 
-            readDistanceEvent.fire(new ReadDistanceEvent(getDistance()));
+            readDistanceEvent.fire(new DistanceEvent(getDistance()));
         }
     }
 

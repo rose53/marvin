@@ -1,8 +1,10 @@
-package de.rose53.marvin.platform;
+package de.rose53.marvin.platform.message;
 
 import static de.rose53.marvin.platform.EMessageType.MEC_CURR;
 
 import java.util.StringJoiner;
+
+import de.rose53.marvin.platform.Message;
 
 /**
  *
@@ -27,9 +29,7 @@ public class MECCurrentMessage extends Message {
     protected String getDataString() {
         StringJoiner sj = new StringJoiner(",");
 
-        sj.add(getMessageType().toString())
-          .add(getMessageId())
-          .add(getMessageUid())
+        sj.add(getMessageHeader())
           .add(Integer.toString(fl))
           .add(Integer.toString(rl))
           .add(Integer.toString(fr))

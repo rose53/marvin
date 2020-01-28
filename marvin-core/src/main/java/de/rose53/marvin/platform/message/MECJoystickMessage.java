@@ -1,9 +1,12 @@
-package de.rose53.marvin.platform;
+package de.rose53.marvin.platform.message;
 
 import java.util.StringJoiner;
 
+import de.rose53.marvin.platform.EMessageType;
+import de.rose53.marvin.platform.Message;
+
 /**
- * 
+ *
  * @author rose
  */
 public class MECJoystickMessage extends Message {
@@ -23,9 +26,7 @@ public class MECJoystickMessage extends Message {
     protected String getDataString() {
         StringJoiner sj = new StringJoiner(",");
 
-        sj.add(getMessageType().toString())
-          .add(getMessageId())
-          .add(getMessageUid())
+        sj.add(getMessageHeader())
           .add(Byte.toString(ch1))
           .add(Byte.toString(ch3))
           .add(Byte.toString(ch4));

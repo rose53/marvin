@@ -38,6 +38,10 @@ public class RestHelper {
 
     @Inject
     @Any
+    Instance<Compass> compass;
+
+    @Inject
+    @Any
     Instance<PanTiltSensors> panTiltSensors;
 
     static RestHelper instance;
@@ -50,6 +54,10 @@ public class RestHelper {
 
     static public MecanumDrive getMecanumDrive() {
         return  instance.mecanumDrives.select(new HardwareInstance()).get();
+    }
+
+    static public Compass getCompass() {
+        return  instance.compass.select(new HardwareInstance()).get();
     }
 
     static public PanTiltSensors getPanTiltSensor() {

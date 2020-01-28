@@ -57,7 +57,7 @@ final class Pcd8544DisplayBuffer {
      * Clears the display buffer by filling it with zeros
      */
     public void clearDisplayBuffer() {
-        logger.debug("clearDisplayBuffer:");
+        logger.trace("clearDisplayBuffer:");
         fillScreen(false);
     }
 
@@ -98,7 +98,7 @@ final class Pcd8544DisplayBuffer {
     }
 
     public void setPixel(Point p, boolean value) {
-        logger.debug("setPixel: p : {}, value = {}", p, value);
+        logger.trace("setPixel: p : {}, value = {}", p, value);
         if (p.x < 0 || p.x >= WIDTH || p.y < 0 || p.y >= HEIGHT) {
             logger.error("setPixel: x or y is out of range");
             return;
@@ -111,13 +111,13 @@ final class Pcd8544DisplayBuffer {
     }
 
     public boolean getPixel(Point p) {
-        logger.debug("getPixel: p : {}", p);
+        logger.trace("getPixel: p : {}", p);
         if (p.x < 0 || p.x >= WIDTH || p.y < 0 || p.y >= HEIGHT) {
             logger.error("getPixel: x or y is out of range");
             return false;
         }
         boolean retVal = ((displayBuffer[p.x + (p.y / 8) * WIDTH] >> (p.y % 8)) & 0x1) > 0;
-        logger.debug("getPixel: value = {}", retVal);
+        logger.trace("getPixel: value = {}", retVal);
         return retVal;
     }
 

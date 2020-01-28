@@ -598,7 +598,7 @@ public class Pcd8544LcdDisplay implements LCD, Display {
 
     @Override
     public void distance(int distance) {
-        //write(1,"Distance:" + distance + "cm   ");
+        write(1,"Distance:" + distance + "cm   ");
     }
 
     private InetAddress getFirstNonLoopbackAddress(boolean preferIpv4, boolean preferIPv6) throws SocketException {

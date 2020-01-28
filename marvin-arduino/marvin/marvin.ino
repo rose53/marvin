@@ -2,16 +2,19 @@
 #include <Wire.h>
 #include <Dagu4Motor.h>
 #include <MecanumDrive.h>
+#include <NewPing.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_HMC5883_U.h>
 
-#define DIRECTION_FL 28
-#define DIRECTION_RL 26
-#define DIRECTION_FR 24
+#define DIRECTION_FL 25
+#define DIRECTION_RL 24
+#define DIRECTION_FR 23
 #define DIRECTION_RR 22
 
-#define PWM_MOTOR_FL 7
-#define PWM_MOTOR_RL 6
-#define PWM_MOTOR_FR 5
-#define PWM_MOTOR_RR 8
+#define PWM_MOTOR_FL 11 
+#define PWM_MOTOR_RL 10
+#define PWM_MOTOR_FR  9
+#define PWM_MOTOR_RR  8
 
 // the following are for external interrupts (connected to the encoder pins)
 #define ENC_MOTOR_FL 0    // equals pin 2
@@ -19,12 +22,9 @@
 #define ENC_MOTOR_FR 4    // equals pin 19
 #define ENC_MOTOR_RR 5    // equals pin 18
 
-#define TRIGGER_PIN  52  // Arduino pin tied to trigger pin on the ultrasonic sensor.
-#define ECHO_PIN     53  // Arduino pin tied to echo pin on the ultrasonic sensor.
-#define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-
-#define COMMAND_READ_MECANUM_MOTOR_INFO 65
-#define COMMAND_READ_DISTANCE 66
+#define TRIGGER_PIN  26  // Arduino pin tied to trigger pin on the ultrasonic sensor.
+#define ECHO_PIN     27  // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 const int dirPins[4]  = {DIRECTION_FL, DIRECTION_RL , DIRECTION_FR, DIRECTION_RR}; // direction pins
 const int pwmPins[4]  = {PWM_MOTOR_FL, PWM_MOTOR_RL, PWM_MOTOR_FR, PWM_MOTOR_RR};  // pwm pins
@@ -34,9 +34,15 @@ const int encPins[4]  = {ENC_MOTOR_FL, ENC_MOTOR_RL, ENC_MOTOR_FR, ENC_MOTOR_RR}
 
 void checkCurrent();
 void sendCurrent();
+void sendMotorInfo();
+void sendDistance();
+void sendHeading();
+
 void correctSpeed();
 
 MecanumDrive mecanumDrive;
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
 
 
 int address = 0;
@@ -45,12 +51,15 @@ int address = 0;
 char dataBuffer[1024];
 int dataBufferIndex = 0;
 
-volatile unsigned int distance;
+volatile boolean enableCommunication = false;
 
 
 Ticker checkCurrentTicker(checkCurrent,1000); // checks, if the current of a motor is above 2Amps every 1000 ms
 Ticker sendCurrentTicker(sendCurrent,30000); // sends the actual current consumption every 30sec
-Ticker correctSpeedTicker(correctSpeed,50); // checks, if the current of a motor is above 2Amps every 1000 ms
+Ticker sendMotorInfoTicker(sendMotorInfo,30000); // sends the actual motor information every 30sec
+Ticker correctSpeedTicker(correctSpeed,50); // checks, if the current of a motor is above 2Amps every 50 ms
+Ticker distanceTicker(sendDistance,500); // sends the distances every 500 ms
+Ticker headingTicker(sendHeading,2000); // sends the heading every 2000 ms
 
 void setup() {
 
@@ -64,10 +73,15 @@ void setup() {
     pinMode(ECHO_PIN, INPUT);
     pinMode(TRIGGER_PIN, OUTPUT);
 
+    mag.begin();
+
     // start the ticker objects
     checkCurrentTicker.start();
     sendCurrentTicker.start();
+    sendMotorInfoTicker.start();
     correctSpeedTicker.start();
+    distanceTicker.start();
+    headingTicker.start();
 }
 
 void loop() {  
@@ -85,17 +99,10 @@ void loop() {
     // update the ticker objects
     correctSpeedTicker.update();
     sendCurrentTicker.update();
-    checkCurrentTicker.update();
-  
-  /*
-  digitalWrite(TRIGGER_PIN, LOW);                   // Set the trigger pin to low for 2uS
-  delayMicroseconds(2);
-  digitalWrite(TRIGGER_PIN, HIGH);                  // Send a 10uS high to trigger ranging
-  delayMicroseconds(10);
-  digitalWrite(TRIGGER_PIN, LOW);                   // Send pin low again
-  distance = pulseIn(ECHO_PIN, HIGH);        // Read in times pulse
-  distance= distance/58;                        // Calculate distance from time of pulse
-  */
+    sendMotorInfoTicker.update();
+    checkCurrentTicker.update();  
+    distanceTicker.update();
+    headingTicker.update();
 }
 
 // calculate the checksum:
@@ -148,16 +155,15 @@ void handleMessage(const String& message) {
         dataPos = dataString.indexOf(',', dataPos + 1);
         int ch4 = dataString.substring(tmpDataPos + 1, dataPos).toInt();
         mecanumDrive.setValue(ch1, ch3, ch4);
+    } else if (messageType == "GET_MEC_CURR") {
+        sendCurrent(messageUid.c_str());
+    } else if (messageType == "GET_MEC_INFO") {
+        sendMotorInfo(messageUid.c_str());
+    } else if (messageType == "GET_HDG") {
+        sendHeading(messageUid.c_str());
+    } else if (messageType == "OPEN") {
+        enableCommunication = true;
+    } else if (messageType == "CLOSE") {
+        enableCommunication = false;
     }
-}
-
-
-// callback for sending data
-void sendData() {
-  //  Serial.print("data requested: ");
-  if (address == COMMAND_READ_MECANUM_MOTOR_INFO) {
-    readCommand65();
-  } else if (address == COMMAND_READ_DISTANCE) {
-    readCommand66();
-  }
 }

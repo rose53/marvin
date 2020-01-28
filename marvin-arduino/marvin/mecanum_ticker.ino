@@ -17,13 +17,22 @@ void checkCurrent()
     }
 }
 
+
+
 /*
  * Reads the current from the mecanum drive and sends the data to the Pi
  */
+
 void sendCurrent() {
+    sendCurrent("");
+}
 
-    String message = "MEC_CURR,,,";
+void sendCurrent(const String& messageUid) {
 
+    String message = "MEC_CURR,,";
+
+    message += messageUid;
+    message += ",";
     message += mecanumDrive.getCurrent(FRONT_LEFT);
     message += ",";
     message += mecanumDrive.getCurrent(REAR_LEFT);
@@ -34,6 +43,40 @@ void sendCurrent() {
 
     message = "$" + message + "*" + checkSum(message);
     Serial2.println(message);
+    delay(100);
+}
+
+/*
+ * Reads the motor information (direction,speed) from the mecanum drive and sends the data to the Pi
+ */
+void sendMotorInfo() {
+    sendMotorInfo("");
+} 
+void sendMotorInfo(const String& messageUid) {
+
+    String message = "MEC_INFO,,";
+
+    message += messageUid;
+    message += ",";
+    message += mecanumDrive.getMotorDirection(FRONT_LEFT);
+    message += ",";
+    message += mecanumDrive.getSpeed(FRONT_LEFT);
+    message += ",";
+    message += mecanumDrive.getMotorDirection(REAR_LEFT);
+    message += ",";
+    message += mecanumDrive.getSpeed(REAR_LEFT);
+    message += ",";
+    message += mecanumDrive.getMotorDirection(FRONT_RIGHT);
+    message += ",";
+    message += mecanumDrive.getSpeed(FRONT_RIGHT);
+    message += ",";
+    message += mecanumDrive.getMotorDirection(REAR_RIGHT);
+    message += ",";
+    message += mecanumDrive.getSpeed(REAR_RIGHT);    
+
+    message = "$" + message + "*" + checkSum(message);
+    Serial2.println(message);
+    delay(100);
 }
 
 /*

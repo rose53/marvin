@@ -5,22 +5,15 @@ package de.rose53.marvin.platform;
  * @author rose
  */
 public enum EMessageType {
-    /**
-     * Ultrasonic sensor
-     */
-    US,
-
-    /**
-     * Magnetometer/Compass
-     */
-    MAG,
-
-    /**
-     * Mecanum drive
-     */
-    MEC,
-    /**
-     * Mecanum drive current
-     */
-    MEC_CURR
+    OPEN,         // open
+    CLOSE,        // close
+    US,           // ultrasonic sensor
+    GET_US,       // Sends a message to read the US data
+    HDG,          // Magnetometer/Compass heading
+    GET_HDG,      // sends a message to read the heading
+    MEC,          // Mecanum drive
+    MEC_INFO,     // Mecanum drive info
+    GET_MEC_INFO, // Sends a message to read the Mecanum drive info
+    MEC_CURR,     // Mecanum drive current
+    GET_MEC_CURR  // Sends a message to read the current
 }

@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import de.rose53.marvin.platform.message.HDGMessage;
+
 /**
  *
  * @author rose
@@ -64,17 +66,17 @@ public class MessageTest {
 
     @Test
     public void testBuildMessageFloat() throws InvalidMessageException, ChecksumErrorMessageException {
-        Message message = Message.build("$MAG,12345,,6.07*49");
+        Message message = Message.build("$HDG,12345,,6.07*49");
         assertNotNull(message);
-        assertEquals(EMessageType.MAG,message.getMessageType());
+        assertEquals(EMessageType.HDG,message.getMessageType());
         assertEquals("12345",message.getMessageId());
         assertEquals("",message.getMessageUid());
-        assertEquals(6.07,((MAGMessage)message).getHeading(),0.001);
+        assertEquals(6.07,((HDGMessage)message).getHeading(),0.001);
     }
 
     @Test
     public void testGenerateChecksum() {
-    	assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
-    	assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
+        assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
+        assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
     }
 }
