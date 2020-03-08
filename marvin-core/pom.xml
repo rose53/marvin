@@ -12,10 +12,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.pi4j</groupId>
-            <artifactId>pi4j-device</artifactId>
-        </dependency>
-               <dependency>
             <groupId>org.jboss.weld.se</groupId>
             <artifactId>weld-se</artifactId>
         </dependency>
@@ -30,10 +26,6 @@
         <dependency>
             <groupId>net.java.jinput</groupId>
             <artifactId>jinput</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.scream3r</groupId>
