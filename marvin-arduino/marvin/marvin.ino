@@ -5,6 +5,7 @@
 #include <NewPing.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_HMC5883_U.h>
+#include <Servo.h>
 
 #define DIRECTION_FL 25
 #define DIRECTION_RL 24
@@ -15,6 +16,16 @@
 #define PWM_MOTOR_RL 10
 #define PWM_MOTOR_FR  9
 #define PWM_MOTOR_RR  8
+
+#define PWM_MAXBOTIX_0 5
+#define PWM_MAXBOTIX_1 6
+#define PWM_MAXBOTIX_2 7
+
+#define PWM_SERVO_PAN 12
+#define PWM_SERVO_TILT 13
+
+#define PAN_ZERO 75
+#define TILT_ZERO 45
 
 // the following are for external interrupts (connected to the encoder pins)
 #define ENC_MOTOR_FL 0    // equals pin 2
@@ -43,9 +54,9 @@ void correctSpeed();
 MecanumDrive mecanumDrive;
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
+Servo servoPan;
+Servo servoTilt;
 
-
-int address = 0;
 
 // the data buffer holds the data send from the pi, the index points to the next free position to write the recieved data
 char dataBuffer[1024];
@@ -57,8 +68,8 @@ volatile boolean enableCommunication = false;
 Ticker checkCurrentTicker(checkCurrent,1000); // checks, if the current of a motor is above 2Amps every 1000 ms
 Ticker sendCurrentTicker(sendCurrent,30000); // sends the actual current consumption every 30sec
 Ticker sendMotorInfoTicker(sendMotorInfo,30000); // sends the actual motor information every 30sec
-Ticker correctSpeedTicker(correctSpeed,50); // checks, if the current of a motor is above 2Amps every 50 ms
-Ticker distanceTicker(sendDistance,500); // sends the distances every 500 ms
+Ticker correctSpeedTicker(correctSpeed,50); // checks, if the current of a motor is above 2Amps every 2000 ms
+Ticker distanceTicker(sendDistance,2000); // sends the distances every 500 ms
 Ticker headingTicker(sendHeading,2000); // sends the heading every 2000 ms
 
 void setup() {
@@ -73,8 +84,18 @@ void setup() {
     pinMode(ECHO_PIN, INPUT);
     pinMode(TRIGGER_PIN, OUTPUT);
 
+    pinMode(PWM_MAXBOTIX_0, INPUT);
+    pinMode(PWM_MAXBOTIX_1, INPUT);
+    pinMode(PWM_MAXBOTIX_2, INPUT);
+
     mag.begin();
 
+    servoPan.attach(PWM_SERVO_PAN);
+    servoTilt.attach(PWM_SERVO_TILT);
+
+    servoPan.write(PAN_ZERO);
+    servoTilt.write(TILT_ZERO);
+    
     // start the ticker objects
     checkCurrentTicker.start();
     sendCurrentTicker.start();
@@ -161,9 +182,37 @@ void handleMessage(const String& message) {
         sendMotorInfo(messageUid.c_str());
     } else if (messageType == "GET_HDG") {
         sendHeading(messageUid.c_str());
+    } else if (messageType == "GET_US") {
+        sendDistance(messageUid.c_str(),messageId);
     } else if (messageType == "OPEN") {
         enableCommunication = true;
     } else if (messageType == "CLOSE") {
         enableCommunication = false;
-    }
+    } else if (messageType == "PAN") {
+        int tmpDataPos = dataPos;
+        dataPos = dataString.indexOf(',', dataPos + 1);
+        int angle = dataString.substring(tmpDataPos + 1, dataPos).toInt() + PAN_ZERO;
+        servoPan.write(constrain(angle,20,170));
+        sendPanTilt();
+    } else if (messageType == "PAN_INC") {
+        int tmpDataPos = dataPos;
+        dataPos = dataString.indexOf(',', dataPos + 1);
+        int angle = servoPan.read() + dataString.substring(tmpDataPos + 1, dataPos).toInt();
+        servoPan.write(constrain(angle,20,170));
+        sendPanTilt();
+    } else if (messageType == "TILT") {
+        int tmpDataPos = dataPos;
+        dataPos = dataString.indexOf(',', dataPos + 1);
+        int angle = dataString.substring(tmpDataPos + 1, dataPos).toInt() + TILT_ZERO;
+        servoTilt.write(constrain(angle,20,170));
+        sendPanTilt();
+    } else if (messageType == "TILT_INC") {
+        int tmpDataPos = dataPos;
+        dataPos = dataString.indexOf(',', dataPos + 1);
+        int angle = servoTilt.read() + dataString.substring(tmpDataPos + 1, dataPos).toInt();
+        servoTilt.write(constrain(angle,20,170));
+        sendPanTilt();
+    } else if (messageType == "GET_PAN_TILT_INFO") {
+        sendPanTilt(messageUid.c_str());
+    } 
 }
