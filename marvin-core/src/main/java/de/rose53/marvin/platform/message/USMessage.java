@@ -1,7 +1,9 @@
 package de.rose53.marvin.platform.message;
 
+import de.rose53.marvin.Distance.Place;
 import de.rose53.marvin.platform.EMessageType;
 import de.rose53.marvin.platform.Message;
+import de.rose53.marvin.utils.StringUtils;
 
 /**
  *
@@ -9,14 +11,21 @@ import de.rose53.marvin.platform.Message;
  */
 public class USMessage extends Message {
 
-    private final int distance;
+    private final float distance;
 
-    public USMessage(String messageId, int distance) {
+    public USMessage(String messageId, float distance) {
         super(EMessageType.US,messageId);
         this.distance = distance;
     }
 
-    public int getDistance() {
+    public Place getPlace() {
+        if (StringUtils.isEmpty(getMessageId())) {
+            return null;
+        }
+        return Place.fromString(getMessageId());
+    }
+
+    public float getDistance() {
         return distance;
     }
 

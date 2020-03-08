@@ -20,18 +20,23 @@
  */
 package de.rose53.marvin.server;
 
+import java.io.IOException;
+
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.slf4j.Logger;
 
+import de.rose53.marvin.CameraStillOptions;
+import de.rose53.marvin.Distance.Place;
 import de.rose53.marvin.RestHelper;
 
 @Path("/")
@@ -50,13 +55,13 @@ public class PlatformResource {
 
     @GET
     @Path("/mecanum/current")
-    public short[] getCurrent() {
+    public short[] current() {
         return RestHelper.getMecanumDrive().getCurrent();
     }
 
     @GET
     @Path("/heading")
-    public Response getHeading() {
+    public Response heading() {
 
         Float heading = RestHelper.getCompass().getHeading();
         if (heading == null) {
@@ -65,24 +70,44 @@ public class PlatformResource {
         return Response.ok(heading).build();
     }
 
+    @GET
+    @Path("/distance/{place}")
+    public Response distance(@PathParam("place") String place) {
+
+        Float distance = RestHelper.getDistance().getDistance(Place.fromString(place));
+        if (distance == null) {
+            return Response.noContent().build();
+        }
+        return Response.ok(distance).build();
+    }
+
     @PUT
     @Path("/pan")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void setPan(@FormParam("pan") short pan) {
-        RestHelper.getPanTiltSensor().setPan(pan);
+        RestHelper.getPanTiltServos().setPan(pan);
     }
 
     @PUT
     @Path("/tilt")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void setTilt(@FormParam("tilt") short tilt) {
-        RestHelper.getPanTiltSensor().setTilt(tilt);
+        RestHelper.getPanTiltServos().setTilt(tilt);
     }
 
-    @PUT
-    @Path("/pantilt")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public void setPanTilt(@FormParam("pan") short pan, @FormParam("tilt") short tilt) {
-        RestHelper.getPanTiltSensor().setPanTilt(pan,tilt);
+    @GET
+    @Path("/camera")
+    @Produces("image/jpeg")
+    public Response camera() {
+
+        CameraStillOptions options = new CameraStillOptions();
+
+        options.setTimeout(100);
+
+        try {
+            return Response.ok(RestHelper.getCamera().getImageAsByteArray(options),"image/jpeg").build();
+        } catch (IOException e) {
+            return Response.serverError().build();
+        }
     }
 }

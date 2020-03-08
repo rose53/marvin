@@ -1,13 +1,13 @@
 package de.rose53.marvin.platform;
 
+import static de.rose53.marvin.utils.StringUtils.*;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-
-import org.apache.commons.lang3.StringUtils;
 
 public class LatestUniqueQueue<E extends Message> implements Queue<E> {
 
@@ -126,7 +126,7 @@ public class LatestUniqueQueue<E extends Message> implements Queue<E> {
     private String getKey(E e) {
         StringBuilder b = new StringBuilder(e.getMessageType().toString());
 
-        if (StringUtils.isNotBlank(e.getMessageId())) {
+        if (isNotBlank(e.getMessageId())) {
             b.append('#')
              .append(e.getMessageId());
         }

@@ -7,6 +7,9 @@ package de.rose53.marvin;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
@@ -19,6 +22,9 @@ import org.jboss.weld.environment.se.WeldContainer;
 import org.slf4j.Logger;
 
 import de.rose53.marvin.events.DistanceEvent;
+import de.rose53.marvin.events.HeadingEvent;
+import de.rose53.marvin.events.ImageEvent;
+import de.rose53.marvin.events.PanTiltEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 import de.rose53.marvin.joystick.Joystick;
@@ -45,9 +51,10 @@ public class Marvin implements Runnable {
     Instance<MecanumDrive> mecanumDrives;
 
     @Inject
-    @Any
-    Instance<Display> displays;
+    Display display;
 
+    @Inject
+    Camera camera;
 
     @Inject
     Webserver webServer;
@@ -57,6 +64,8 @@ public class Marvin implements Runnable {
 
     @Inject
     RestHelper restHelper;
+
+    private ScheduledExecutorService cameraExecutor = Executors.newScheduledThreadPool(1);
 
     public void start() {
 
@@ -74,6 +83,13 @@ public class Marvin implements Runnable {
             // open communication
             MecanumDrive mecanumDrive = mecanumDrives.select(new HardwareInstance()).get();
             mecanumDrive.getCurrent();
+
+            CameraStillOptions options = new CameraStillOptions();
+
+            options.setTimeout(100);
+
+            cameraExecutor.scheduleAtFixedRate(() -> camera.auqireImageAsByteArray(options), 5, 2, TimeUnit.SECONDS);
+
         } catch (Exception e) {
             logger.error("start:",e);
         }
@@ -92,6 +108,7 @@ public class Marvin implements Runnable {
             running = false;
         }
         try {
+            cameraExecutor.shutdown();
             webServer.stop();
             joystick.stop();
         } catch (Exception e) {
@@ -117,10 +134,7 @@ public class Marvin implements Runnable {
     }
 
     public void show() {
-        Display display = displays.select(new HardwareInstance()).get();
-        if (display != null) {
-            display.welcome();
-        }
+        display.welcome();
     }
 
 
@@ -130,19 +144,29 @@ public class Marvin implements Runnable {
 
     public void onReadMecanumMotorInfoEvent(@Observes ReadMecanumMotorInfoEvent event) {
         logger.debug("onReadMecanumMotorInfoEvent: ");
-        Display display = displays.select(new HardwareInstance()).get();
-        if (display != null) {
-            display.motorInformation(event.getReadMecanumMotorInfo());
-        }
+        display.motorInformation(event.getReadMecanumMotorInfo());
     }
 
     public void onReadDistanceEvent(@Observes DistanceEvent event) {
-        logger.debug("onReadMecanumCurrentEvent: ");
-        Display display = displays.select(new HardwareInstance()).get();
-        if (display != null) {
-            display.distance(event.getDistance());
-        }
+        logger.debug("onReadDistanceEvent: ");
+        display.distance(event.getDistance(),event.getPlace());
     }
+
+    public void onReadHeadingEvent(@Observes HeadingEvent event) {
+        logger.debug("onReadHeadingEvent: ");
+        display.heading(event.getHeading());
+    }
+
+    public void onPanTiltEvent(@Observes PanTiltEvent event) {
+        logger.debug("onPanTiltEvent: ");
+        display.panTilt(event.getPan(),event.getTilt());
+    }
+
+    public void onImageEvent(@Observes ImageEvent event) {
+        logger.debug("onImageEvent: ");
+        display.image(event.getBufferedImage());
+    }
+
 
     public static void main(String[] args) {
         System.out.println("Starting ...");
@@ -162,7 +186,7 @@ public class Marvin implements Runnable {
             public void run() {
                 marvin.logger.info("Shutdown Hook is running !");
                 marvin.stop();
-                weld.shutdown();
+                //weld.shutdown();
             }
         });
 

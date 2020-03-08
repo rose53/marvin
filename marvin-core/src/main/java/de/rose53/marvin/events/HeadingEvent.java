@@ -1,5 +1,5 @@
 /*
-* DistanceEvent.java
+* HeadingEvent.java
 *
 * Copyright (c) 2014, rose. All rights reserved.
 *
@@ -20,31 +20,24 @@
 */
 package de.rose53.marvin.events;
 
-import de.rose53.marvin.Distance.Place;
-
 /**
  * @author rose
  *
  */
-public class DistanceEvent {
+public class HeadingEvent {
 
-    private float distance;
-    private Place place;
+    private float heading;
 
-    public DistanceEvent() {
+    public HeadingEvent() {
 
     }
 
-    public DistanceEvent(float distance, Place place) {
-        this.distance = distance;
-        this.place    = place;
+    public HeadingEvent(float heading) {
+        this.heading = heading;
     }
 
-    public float getDistance() {
-        return distance;
+    public float getHeading() {
+        return heading;
     }
 
-    public Place getPlace() {
-        return place;
-    }
 }

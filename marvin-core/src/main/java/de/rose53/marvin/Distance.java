@@ -1,5 +1,5 @@
 /*
-* DistanceEvent.java
+* PanTiltSensors.java
 *
 * Copyright (c) 2014, rose. All rights reserved.
 *
@@ -18,33 +18,38 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 * MA 02110-1301 USA
 */
-package de.rose53.marvin.events;
-
-import de.rose53.marvin.Distance.Place;
+package de.rose53.marvin;
 
 /**
  * @author rose
  *
  */
-public class DistanceEvent {
+public interface Distance {
 
-    private float distance;
-    private Place place;
+    static public enum Place {
+        FRONT("FRONT"),
+        LEFT("LEFT"),
+        RIGHT("RIGHT"),
+        BACK("BACK");
 
-    public DistanceEvent() {
+        final String id;
 
+        Place(String id) {
+            this.id = id;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public static Place fromString(String place) {
+            return valueOf(place.toUpperCase());
+        }
     }
 
-    public DistanceEvent(float distance, Place place) {
-        this.distance = distance;
-        this.place    = place;
-    }
-
-    public float getDistance() {
-        return distance;
-    }
-
-    public Place getPlace() {
-        return place;
-    }
+    /**
+     * Returns the distance in [cm]
+     * @return the distance in [cm]
+     */
+    Float getDistance(Place place);
 }

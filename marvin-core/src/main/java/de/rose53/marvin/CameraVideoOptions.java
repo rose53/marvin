@@ -1,7 +1,7 @@
 /*
-* DistanceEvent.java
+* PiCamVideoOptions.java
 *
-* Copyright (c) 2014, rose. All rights reserved.
+* Copyright (c) 2013, rose. All rights reserved.
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -18,33 +18,16 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 * MA 02110-1301 USA
 */
-package de.rose53.marvin.events;
-
-import de.rose53.marvin.Distance.Place;
+package de.rose53.marvin;
 
 /**
  * @author rose
  *
  */
-public class DistanceEvent {
+public class CameraVideoOptions extends CameraOptions {
 
-    private float distance;
-    private Place place;
-
-    public DistanceEvent() {
-
-    }
-
-    public DistanceEvent(float distance, Place place) {
-        this.distance = distance;
-        this.place    = place;
-    }
-
-    public float getDistance() {
-        return distance;
-    }
-
-    public Place getPlace() {
-        return place;
-    }
+    /**
+     * In video mode only, turn on video stabilisation.
+     */
+    private boolean vstab;
 }

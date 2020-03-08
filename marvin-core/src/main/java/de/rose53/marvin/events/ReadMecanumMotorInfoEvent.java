@@ -20,6 +20,12 @@
 */
 package de.rose53.marvin.events;
 
+import static java.util.stream.Collectors.toMap;
+import static java.util.Arrays.stream;
+
+import java.util.Map;
+
+
 import de.rose53.marvin.Motor;
 import de.rose53.marvin.ReadMecanumMotorInfo;
 
@@ -39,11 +45,7 @@ public class ReadMecanumMotorInfoEvent {
         this.readMecanumMotorInfo = readMecanumMotorInfo;
     }
 
-    public ReadMecanumMotorInfo[] getReadMecanumMotorInfo() {
-        return readMecanumMotorInfo;
-    }
-
-    public ReadMecanumMotorInfo getReadMecanumMotorInfoEvent(Motor motor) {
+    public ReadMecanumMotorInfo getReadMecanumMotorInfo(Motor motor) {
         if (motor == null) {
             return null;
         }
@@ -67,4 +69,7 @@ public class ReadMecanumMotorInfoEvent {
         return retVal;
     }
 
+    public Map<Motor, ReadMecanumMotorInfo> getReadMecanumMotorInfo() {
+        return stream(Motor.values()).collect(toMap(m -> m, m -> getReadMecanumMotorInfo(m)));
+    }
 }

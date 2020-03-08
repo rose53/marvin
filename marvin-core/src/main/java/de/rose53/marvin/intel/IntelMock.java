@@ -20,9 +20,11 @@ import org.slf4j.Logger;
 
 import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
-import de.rose53.marvin.PanTiltSensors;
+import de.rose53.marvin.PanTiltServos;
 import de.rose53.marvin.ReadMecanumMotorInfo;
+import de.rose53.marvin.Distance.Place;
 import de.rose53.marvin.events.DistanceEvent;
+import de.rose53.marvin.events.HeadingEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 
@@ -32,7 +34,7 @@ import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
  */
 @ApplicationScoped
 @Hardware(Hardware.hw.INTEL)
-public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
+public class IntelMock implements MecanumDrive, PanTiltServos, AutoCloseable {
 
     private short[] oldCurrent = new short[4];
     private ReadMecanumMotorInfo[] oldReadMecanumMotorInfo = new ReadMecanumMotorInfo[4];
@@ -49,7 +51,10 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
     Event<ReadMecanumMotorInfoEvent> readMecanumMotorInfoEvent;
 
     @Inject
-    Event<DistanceEvent> readDistanceEvent;
+    Event<DistanceEvent> distanceEvent;
+
+    @Inject
+    Event<HeadingEvent> headingEvent;
 
 
     @PostConstruct
@@ -88,14 +93,9 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
         ReadMecanumMotorInfo[] retVal = new ReadMecanumMotorInfo[4];
 
         for (int i = 0; i < retVal.length; i++) {
-            retVal[i] =  new ReadMecanumMotorInfo((Math.random() > 0.5), (short)(Math.random() * 256));
+            retVal[i] =  new ReadMecanumMotorInfo((Math.random() > 0.5), (short)(Math.random() * 100));
         }
         return retVal;
-    }
-
-    @Override
-    public void setPanTilt(short pan, short tilt) {
-        logger.debug("setPanTilt: pan = >{}<, tilt = >{}<",pan,tilt);
     }
 
     @Override
@@ -129,7 +129,6 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
     }
 
 
-    @Override
     public int getDistance() {
         logger.debug("getDistance:");
         return (int)Math.random() * 2000;
@@ -153,7 +152,8 @@ public class IntelMock implements MecanumDrive, PanTiltSensors, AutoCloseable {
                 oldReadMecanumMotorInfo = Arrays.copyOf(readMecanumMotorInfo,readMecanumMotorInfo.length);
             }
 
-            readDistanceEvent.fire(new DistanceEvent(getDistance()));
+            distanceEvent.fire(new DistanceEvent((int)(Math.random() * 2000),Place.FRONT));
+            headingEvent.fire(new HeadingEvent((int)(Math.random() * 360)));
         }
     }
 

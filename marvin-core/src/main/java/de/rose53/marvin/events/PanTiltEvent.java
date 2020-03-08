@@ -1,5 +1,5 @@
 /*
-* DistanceEvent.java
+* HeadingEvent.java
 *
 * Copyright (c) 2014, rose. All rights reserved.
 *
@@ -20,31 +20,29 @@
 */
 package de.rose53.marvin.events;
 
-import de.rose53.marvin.Distance.Place;
-
 /**
  * @author rose
  *
  */
-public class DistanceEvent {
+public class PanTiltEvent {
 
-    private float distance;
-    private Place place;
+    private short pan;
+    private short tilt;
 
-    public DistanceEvent() {
+    public PanTiltEvent() {
 
     }
 
-    public DistanceEvent(float distance, Place place) {
-        this.distance = distance;
-        this.place    = place;
+    public PanTiltEvent(short pan, short tilt) {
+        this.pan  = pan;
+        this.tilt = tilt;
     }
 
-    public float getDistance() {
-        return distance;
+    public short getPan() {
+        return pan;
     }
 
-    public Place getPlace() {
-        return place;
+    public short getTilt() {
+        return tilt;
     }
 }

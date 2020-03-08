@@ -22,6 +22,7 @@ package de.rose53.marvin.platform;
 
 import static jssc.SerialPort.*;
 import static de.rose53.marvin.platform.EMessageType.*;
+import static de.rose53.marvin.utils.StringUtils.*;
 
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
@@ -36,7 +37,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import jssc.SerialPort;
@@ -44,10 +44,14 @@ import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 import de.rose53.marvin.Compass;
+import de.rose53.marvin.Distance;
 import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
+import de.rose53.marvin.PanTiltServos;
 import de.rose53.marvin.ReadMecanumMotorInfo;
 import de.rose53.marvin.events.DistanceEvent;
+import de.rose53.marvin.events.HeadingEvent;
+import de.rose53.marvin.events.PanTiltEvent;
 import de.rose53.marvin.events.ReadMecanumCurrentEvent;
 import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 import de.rose53.marvin.platform.message.CloseMessage;
@@ -57,6 +61,10 @@ import de.rose53.marvin.platform.message.MECCurrentMessage;
 import de.rose53.marvin.platform.message.MECInfoMessage;
 import de.rose53.marvin.platform.message.MECJoystickMessage;
 import de.rose53.marvin.platform.message.OpenMessage;
+import de.rose53.marvin.platform.message.PanMessage;
+import de.rose53.marvin.platform.message.PanTiltIncMessage;
+import de.rose53.marvin.platform.message.PanTiltInfoMessage;
+import de.rose53.marvin.platform.message.TiltMessage;
 import de.rose53.marvin.platform.message.USMessage;
 
 /**
@@ -65,7 +73,7 @@ import de.rose53.marvin.platform.message.USMessage;
  */
 @ApplicationScoped
 @Hardware(Hardware.hw.PI)
-public class MarvinHardware implements Runnable, MecanumDrive, Compass {
+public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance, PanTiltServos {
 
     private boolean shouldRun = true;
 
@@ -74,7 +82,6 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
     private byte ch4 = 0;
 
     private short[] oldCurrent = new short[4];
-    private int oldDistance = 0;
 
     private LatestUniqueQueue<Message> sendQueue       = new LatestUniqueQueue<>();
 
@@ -91,10 +98,16 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
     Event<ReadMecanumMotorInfoEvent> readMecanumMotorInfoEvent;
 
     @Inject
-    Event<DistanceEvent> readDistanceEvent;
+    Event<DistanceEvent> distanceEvent;
+
+    @Inject
+    Event<HeadingEvent> headingEvent;
 
     @Inject
     Event<MECCurrentMessage> mecanumCurrentMessage;
+
+    @Inject
+    Event<PanTiltEvent> panTiltEvent;
 
     private SerialPort serialPort;
 
@@ -243,6 +256,28 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
         return response.getHeading();
     }
 
+
+
+    @Override
+    public Float getDistance(Place place) {
+        logger.debug("getDistance: place = >{}<", place);
+        if (place == null) {
+            logger.debug("getDistance: no place given, returning null");
+            return null;
+        }
+
+        GetMessage message = new GetMessage(GET_US,place.getId());
+        sendQueue.add(message);
+
+        USMessage response = readGetResponse(message.getMessageUid());
+        if (response == null) {
+            return null;
+        }
+        return response.getDistance();
+    }
+
+
+
     private static class GetEventQueueEntry {
         long    timestamp;
         Message message;
@@ -254,6 +289,49 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
         }
 
 
+    }
+
+    @Override
+    public void setPan(short pan) {
+        logger.debug("setPan: pan = >{}<",pan);
+        PanMessage message = new PanMessage(pan);
+        sendQueue.add(message);
+    }
+
+    @Override
+    public void incrementPan(short increment) {
+        logger.debug("incrementPan: increment = >{}<",increment);
+        PanTiltIncMessage message = PanTiltIncMessage.buildPanIncMessage(increment);
+        sendQueue.add(message);
+
+    }
+
+    @Override
+    public void decrementPan(short decrement) {
+        logger.debug("decrementPan: decrement = >{}<",decrement);
+        PanTiltIncMessage message = PanTiltIncMessage.buildPanIncMessage((short)(-1 * decrement));
+        sendQueue.add(message);
+    }
+
+    @Override
+    public void setTilt(short tilt) {
+        logger.debug("setTilt: tilt = >{}<",tilt);
+        TiltMessage message = new TiltMessage(tilt);
+        sendQueue.add(message);
+    }
+
+    @Override
+    public void incrementTilt(short increment) {
+        logger.debug("incrementTilt: increment = >{}<",increment);
+        PanTiltIncMessage message = PanTiltIncMessage.buildTiltIncMessage(increment);
+        sendQueue.add(message);
+    }
+
+    @Override
+    public void decrementTilt(short decrement) {
+        logger.debug("decrementTilt: decrement = >{}<",decrement);
+        PanTiltIncMessage message = PanTiltIncMessage.buildTiltIncMessage((short)(-1 * decrement));
+        sendQueue.add(message);
     }
 
     class SerialPortReader implements SerialPortEventListener {
@@ -278,7 +356,7 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
                                 logger.debug("serialEvent: messageString = >{}<",messageString);
                                 Message m = Message.build(messageString.trim());
                                 if (m != null) {
-                                    if (StringUtils.isNotEmpty(m.getMessageUid())) {
+                                    if (isNotEmpty(m.getMessageUid())) {
                                         getMessageQueue.offer(new GetEventQueueEntry(m), 1, TimeUnit.SECONDS);
                                     }
                                     if  (MEC_CURR == m.getMessageType()) {
@@ -294,10 +372,13 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
                                         readMecanumMotorInfoEvent.fire(new ReadMecanumMotorInfoEvent(mecInfoMessage.getReadMecanumMotorInfo()));
                                     } else if (US == m.getMessageType()) {
                                         USMessage usMessage = (USMessage) m;
-                                        if (usMessage.getDistance() != oldDistance) {
-                                            readDistanceEvent.fire(new DistanceEvent(usMessage.getDistance()));
-                                            oldDistance = usMessage.getDistance();
-                                        }
+                                        distanceEvent.fire(new DistanceEvent(usMessage.getDistance(),usMessage.getPlace()));
+                                    } else if (HDG == m.getMessageType()) {
+                                        HDGMessage hdgMessage = (HDGMessage) m;
+                                        headingEvent.fire(new HeadingEvent(hdgMessage.getHeading()));
+                                    } else if (PAN_TILT_INFO == m.getMessageType()) {
+                                        PanTiltInfoMessage panTiltMessage = (PanTiltInfoMessage) m;
+                                        panTiltEvent.fire(new PanTiltEvent(panTiltMessage.getPan(),panTiltMessage.getTilt()));
                                     }
 
 
@@ -319,7 +400,7 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
                 if (!sendQueue.isEmpty()) {
                     // send one message
                     Message m = sendQueue.poll();
-                    logger.debug("controlMotors: message = >{}<",m.getTerminatedMessageString());
+                    logger.debug("run: message = >{}<",m.getTerminatedMessageString().trim());
                     serialPort.writeString(m.getTerminatedMessageString());
                 }
 
@@ -329,4 +410,5 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass {
             }
         }
     }
+
 }

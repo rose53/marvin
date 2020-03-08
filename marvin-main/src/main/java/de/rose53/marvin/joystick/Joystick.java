@@ -1,6 +1,7 @@
 package de.rose53.marvin.joystick;
 
 import static net.java.games.input.Component.Identifier.Axis;
+import static net.java.games.input.Component.Identifier.Button;
 
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Instance;
@@ -10,7 +11,7 @@ import org.slf4j.Logger;
 
 import de.rose53.marvin.HardwareInstance;
 import de.rose53.marvin.MecanumDrive;
-import de.rose53.marvin.PanTiltSensors;
+import de.rose53.marvin.PanTiltServos;
 import net.java.games.input.Component;
 import net.java.games.input.Component.Identifier;
 import net.java.games.input.Controller;
@@ -34,7 +35,7 @@ public class Joystick implements Runnable {
 
     @Inject
     @Any
-    Instance<PanTiltSensors> panTiltSensors;
+    Instance<PanTiltServos> panTiltServos;
 
     @Inject
     Controller controller;
@@ -75,34 +76,27 @@ public class Joystick implements Runnable {
     }
 
     public void incrementPan() {
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
+        PanTiltServos panTilt = panTiltServos.select(new HardwareInstance()).get();
 
         panTilt.incrementPan(INC_DEC);
     }
 
     public void decrementPan() {
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
+        PanTiltServos panTilt = panTiltServos.select(new HardwareInstance()).get();
 
         panTilt.decrementPan(INC_DEC);
     }
 
     public void incrementTilt() {
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
+        PanTiltServos panTilt = panTiltServos.select(new HardwareInstance()).get();
 
-        panTilt.incrementTilt(INC_DEC);
+        panTilt.incrementTilt((short)(INC_DEC >> 1));
     }
 
     public void decrementTilt() {
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
+        PanTiltServos panTilt = panTiltServos.select(new HardwareInstance()).get();
 
-        panTilt.decrementTilt(INC_DEC);
-    }
-
-
-    public void tilt(short tilt) {
-        PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
-
-        panTilt.setTilt(tilt);
+        panTilt.decrementTilt((short)(INC_DEC >> 1));
     }
 
     private byte convertValue(float value) {
@@ -147,8 +141,22 @@ public class Joystick implements Runnable {
                     }
                 } else {
                     // button
+
                     if (value == 1.0f) {
                         // on
+                        if (Button.B == comp.getIdentifier()) {
+                            // right
+                            decrementPan();
+                        } else if (Button.Y == comp.getIdentifier()) {
+                            // left
+                            incrementPan();
+                        } if (Button.X == comp.getIdentifier()) {
+                            // up
+                            incrementTilt();
+                        } if (Button.A == comp.getIdentifier()) {
+                            // down
+                            decrementTilt();
+                        }
                     } else {
                         // off
                     }

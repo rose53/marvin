@@ -1,5 +1,5 @@
 /*
-* DistanceEvent.java
+* ImageAvailableEvent.java
 *
 * Copyright (c) 2014, rose. All rights reserved.
 *
@@ -20,31 +20,37 @@
 */
 package de.rose53.marvin.events;
 
-import de.rose53.marvin.Distance.Place;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
 
 /**
  * @author rose
  *
  */
-public class DistanceEvent {
+public class ImageEvent {
 
-    private float distance;
-    private Place place;
+    private byte[] image;
 
-    public DistanceEvent() {
-
+    /**
+     * @param image the byte array containing the image
+     */
+    public ImageEvent(byte[] image) {
+        this.image = image;
     }
 
-    public DistanceEvent(float distance, Place place) {
-        this.distance = distance;
-        this.place    = place;
+    public byte[] getImage() {
+        return image;
     }
 
-    public float getDistance() {
-        return distance;
+    public BufferedImage getBufferedImage() {
+        try {
+            return ImageIO.read(new ByteArrayInputStream(getImage()));
+        } catch (IOException e) {
+        }
+        return null;
     }
 
-    public Place getPlace() {
-        return place;
-    }
 }

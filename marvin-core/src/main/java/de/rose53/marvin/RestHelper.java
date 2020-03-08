@@ -42,7 +42,14 @@ public class RestHelper {
 
     @Inject
     @Any
-    Instance<PanTiltSensors> panTiltSensors;
+    Instance<Distance> distance;
+
+    @Inject
+    @Any
+    Instance<PanTiltServos> panTiltServos;
+
+    @Inject
+    Camera camera;
 
     static RestHelper instance;
 
@@ -60,8 +67,15 @@ public class RestHelper {
         return  instance.compass.select(new HardwareInstance()).get();
     }
 
-    static public PanTiltSensors getPanTiltSensor() {
-        return  instance.panTiltSensors.select(new HardwareInstance()).get();
+    static public Distance getDistance() {
+        return  instance.distance.select(new HardwareInstance()).get();
     }
 
+    static public PanTiltServos getPanTiltServos() {
+        return  instance.panTiltServos.select(new HardwareInstance()).get();
+    }
+
+    static public Camera getCamera() {
+        return instance.camera;
+    }
 }

@@ -24,15 +24,7 @@ package de.rose53.marvin;
  * @author rose
  *
  */
-public interface PanTiltSensors {
-
-    /**
-     * Sets the the pan and tilt values. The range of both vaues is between
-     * 0 and 180 degrees
-     * @param pan the angel in degrees (0-180)
-     * @param tilt the angel in degrees (0-180)
-     */
-    void setPanTilt(short pan, short tilt);
+public interface PanTiltServos {
 
     /**
      * Sets the the pan value.
@@ -79,12 +71,5 @@ public interface PanTiltSensors {
      *
      */
     void decrementTilt(short decrement);
-
-
-    /**
-     * Returns the actual distance
-     * @return the distance
-     */
-    int getDistance();
 
 }

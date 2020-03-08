@@ -1,14 +1,16 @@
 package de.rose53.marvin.platform;
 
+import static de.rose53.marvin.utils.StringUtils.*;
+
 import java.util.StringJoiner;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.rose53.marvin.platform.message.HDGMessage;
 import de.rose53.marvin.platform.message.MECCurrentMessage;
 import de.rose53.marvin.platform.message.MECInfoMessage;
+import de.rose53.marvin.platform.message.PanTiltInfoMessage;
 import de.rose53.marvin.platform.message.USMessage;
 
 /**
@@ -35,7 +37,7 @@ public abstract class Message {
 
     public static Message build(String messageString) throws InvalidMessageException, ChecksumErrorMessageException {
 
-        if (StringUtils.isEmpty(messageString)) {
+        if (isEmpty(messageString)) {
             return null;
         }
 
@@ -59,7 +61,7 @@ public abstract class Message {
         Message retVal = null;
         // first part is message type
         if ("US".equalsIgnoreCase(messageParts[0])) {
-            retVal = new USMessage(messageParts[1], Integer.parseInt(messageParts[3]));
+            retVal = new USMessage(messageParts[1], Float.parseFloat(messageParts[3]));
         } else if ("HDG".equalsIgnoreCase(messageParts[0])) {
             retVal = new HDGMessage(messageParts[1],Float.parseFloat(messageParts[3]));
         } else if ("MEC_CURR".equalsIgnoreCase(messageParts[0])) {
@@ -71,10 +73,12 @@ public abstract class Message {
                                         Integer.parseInt(messageParts[5]) > 0, Short.parseShort(messageParts[6]),
                                         Integer.parseInt(messageParts[7]) > 0, Short.parseShort(messageParts[8]),
                                         Integer.parseInt(messageParts[9]) > 0, Short.parseShort(messageParts[10]));
+        } else if ("PAN_TILT_INFO".equalsIgnoreCase(messageParts[0])) {
+            retVal = new PanTiltInfoMessage(messageParts[1],Short.parseShort(messageParts[3]),Short.parseShort(messageParts[4]));
         }
 
 
-        if (retVal != null && StringUtils.isNotEmpty(messageParts[2])) {
+        if (retVal != null && isNotEmpty(messageParts[2])) {
             retVal.setMessageUid(messageParts[2]);
         }
         return retVal;
