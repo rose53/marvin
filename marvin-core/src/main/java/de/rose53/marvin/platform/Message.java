@@ -41,7 +41,7 @@ public abstract class Message {
             return null;
         }
 
-        if (!messageString.matches("\\$\\w+(?:,[a-zA-Z_0-9\\.]*)*\\*\\w\\w")) {
+        if (!messageString.matches("\\$\\w+(?:,[\\-a-zA-Z_0-9\\.]*)*\\*\\w\\w")) {
             logger.error("build: message >{}< does not match the regexp",messageString);
             throw new InvalidMessageException();
         }

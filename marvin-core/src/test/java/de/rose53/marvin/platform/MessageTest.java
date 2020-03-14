@@ -79,4 +79,13 @@ public class MessageTest {
         assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
         assertEquals("60",Message.generateChecksum("MEC,,,0,25,0"));
     }
+
+    @Test
+    public void testBuildNegativ() throws InvalidMessageException, ChecksumErrorMessageException {
+        Message message = Message.build("$PAN_TILT_INFO,,,-10,25*7f");
+        assertNotNull(message);
+        assertEquals(EMessageType.PAN_TILT_INFO,message.getMessageType());
+        assertEquals("",message.getMessageId());
+        assertEquals("",message.getMessageUid());
+    }
 }
