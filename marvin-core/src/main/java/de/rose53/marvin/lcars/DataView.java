@@ -11,7 +11,9 @@ import de.rose53.marvin.Distance.Place;
 public class DataView extends LcarsComponent {
 
     private Map<Place, LabeledInfoButton> distansLabeledInfoButtorns = new HashMap<>();
-    private LabeledInfoButton             headerLabeledInfoButton = new LabeledInfoButton("HEADING",LabeledInfoButton.BUTTON_COLOR2);
+    private LabeledInfoButton             headingLabeledInfoButton = new LabeledInfoButton("HEADING",LabeledInfoButton.BUTTON_COLOR2);
+    private LabeledInfoButton             panLabeledInfoButton = new LabeledInfoButton("PAN",LabeledInfoButton.BUTTON_COLOR1);
+    private LabeledInfoButton             tiltLabeledInfoButton = new LabeledInfoButton("TILT",LabeledInfoButton.BUTTON_COLOR1);
 
     public DataView() {
         super();
@@ -27,11 +29,12 @@ public class DataView extends LcarsComponent {
     }
 
     public void setHeading(float heading) {
-        headerLabeledInfoButton.setInfo(Integer.toString((int)heading));
+        headingLabeledInfoButton.setInfo(Integer.toString((int)heading));
     }
 
     public void setPanTilt(short pan, short tilt) {
-
+        panLabeledInfoButton.setInfo(Short.toString(pan));
+        tiltLabeledInfoButton.setInfo(Short.toString(tilt));
     }
 
     @Override
@@ -63,12 +66,18 @@ public class DataView extends LcarsComponent {
 
         Rectangle headingRect = new Rectangle(r.x + FRAME_LARGE_SIZE + SPACE,distanceFrontRect.y + BUTTON_LABEL_HEIGHT + SPACE,-1,-1);
 
+        Rectangle panRect  = new Rectangle(r.x + FRAME_LARGE_SIZE + SPACE,headingRect.y + BUTTON_LABEL_HEIGHT + SPACE,-1,-1);
+        Rectangle tiltRect = new Rectangle(panRect.x + SPACE + LabeledInfoButton.getLabeledInfoButtonWidth(),panRect.y ,-1,-1);
+
+
         distansLabeledInfoButtorns.get(Place.FRONT).draw(g2d,distanceFrontRect);
         distansLabeledInfoButtorns.get(Place.LEFT).draw(g2d,distanceLeftRect);
         distansLabeledInfoButtorns.get(Place.RIGHT).draw(g2d,distanceRightRect);
         distansLabeledInfoButtorns.get(Place.BACK).draw(g2d,distanceBackRect);
 
-        headerLabeledInfoButton.draw(g2d, headingRect);
+        headingLabeledInfoButton.draw(g2d, headingRect);
+        panLabeledInfoButton.draw(g2d, panRect);
+        tiltLabeledInfoButton.draw(g2d, tiltRect);
     }
 
 
