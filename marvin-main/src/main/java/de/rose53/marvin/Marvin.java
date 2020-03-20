@@ -88,7 +88,7 @@ public class Marvin implements Runnable {
 
             options.setTimeout(100);
 
-            cameraExecutor.scheduleAtFixedRate(() -> camera.auqireImageAsByteArray(options), 5, 2, TimeUnit.SECONDS);
+            cameraExecutor.scheduleAtFixedRate(() -> camera.auqireImageAsByteArray(options), 10, 5, TimeUnit.SECONDS);
 
         } catch (Exception e) {
             logger.error("start:",e);
