@@ -190,8 +190,8 @@ public class Display {
 
     /**
      * Displays the pan/tilt angle. The value is in [°]
-     * @param pan
-     * @param tilt
+     * @param pan the pan value
+     * @param tilt the tilt value
      */
     public void panTilt(short pan, short tilt) {
         data.setPanTilt(pan,tilt);
@@ -200,10 +200,10 @@ public class Display {
 
     /**
      * Displays the given image
-     * @param image
+     * @param image the iamge to display
      */
     public void image(BufferedImage image) {
-
+        camera.setImage(image);
         redraw();
     }
 
@@ -219,9 +219,9 @@ public class Display {
     private InetAddress getFirstNonLoopbackAddress(boolean preferIpv4, boolean preferIPv6) throws SocketException {
         Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
         while (en.hasMoreElements()) {
-            NetworkInterface i = (NetworkInterface) en.nextElement();
+            NetworkInterface i = en.nextElement();
             for (Enumeration<InetAddress> en2 = i.getInetAddresses(); en2.hasMoreElements();) {
-                InetAddress addr = (InetAddress) en2.nextElement();
+                InetAddress addr = en2.nextElement();
                 if (!addr.isLoopbackAddress()) {
                     if (addr instanceof Inet4Address) {
                         if (preferIPv6) {
