@@ -4,14 +4,9 @@ import static de.rose53.marvin.utils.StringUtils.*;
 
 import java.util.StringJoiner;
 
+import de.rose53.marvin.platform.message.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import de.rose53.marvin.platform.message.HDGMessage;
-import de.rose53.marvin.platform.message.MECCurrentMessage;
-import de.rose53.marvin.platform.message.MECInfoMessage;
-import de.rose53.marvin.platform.message.PanTiltInfoMessage;
-import de.rose53.marvin.platform.message.USMessage;
 
 /**
  *
@@ -75,6 +70,8 @@ public abstract class Message {
                                         Integer.parseInt(messageParts[9]) > 0, Short.parseShort(messageParts[10]));
         } else if ("PAN_TILT_INFO".equalsIgnoreCase(messageParts[0])) {
             retVal = new PanTiltInfoMessage(messageParts[1],Short.parseShort(messageParts[3]),Short.parseShort(messageParts[4]));
+        } else if ("LIPO_INFO".equalsIgnoreCase(messageParts[0])) {
+            retVal = new LiPoInfoMessage(messageParts[1],Float.parseFloat(messageParts[3]),Float.parseFloat(messageParts[4]));
         }
 
 

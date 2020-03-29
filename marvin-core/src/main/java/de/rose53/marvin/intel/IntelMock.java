@@ -16,6 +16,8 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
+import de.rose53.marvin.events.*;
+import de.rose53.marvin.utils.LiPoStatus;
 import org.slf4j.Logger;
 
 import de.rose53.marvin.Hardware;
@@ -23,10 +25,6 @@ import de.rose53.marvin.MecanumDrive;
 import de.rose53.marvin.PanTiltServos;
 import de.rose53.marvin.ReadMecanumMotorInfo;
 import de.rose53.marvin.Distance.Place;
-import de.rose53.marvin.events.DistanceEvent;
-import de.rose53.marvin.events.HeadingEvent;
-import de.rose53.marvin.events.ReadMecanumCurrentEvent;
-import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 
 /**
  *
@@ -56,6 +54,8 @@ public class IntelMock implements MecanumDrive, PanTiltServos, AutoCloseable {
     @Inject
     Event<HeadingEvent> headingEvent;
 
+    @Inject
+    Event<LiPoEvent> liPoEvent;
 
     @PostConstruct
     public void init() {
@@ -131,7 +131,7 @@ public class IntelMock implements MecanumDrive, PanTiltServos, AutoCloseable {
 
     public int getDistance() {
         logger.debug("getDistance:");
-        return (int)Math.random() * 2000;
+        return (int)(Math.random() * 2000);
     }
 
     private class ReadDataTask implements Runnable {
@@ -154,6 +154,7 @@ public class IntelMock implements MecanumDrive, PanTiltServos, AutoCloseable {
 
             distanceEvent.fire(new DistanceEvent((int)(Math.random() * 2000),Place.FRONT));
             headingEvent.fire(new HeadingEvent((int)(Math.random() * 360)));
+            liPoEvent.fire(new LiPoEvent(new LiPoStatus( (float)(Math.random() * 2.0 + 2.0),(float)(Math.random() * 2.0 + 2.0))));
         }
     }
 

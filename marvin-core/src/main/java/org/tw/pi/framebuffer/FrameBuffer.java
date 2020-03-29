@@ -249,14 +249,16 @@ public class FrameBuffer implements AutoCloseable {
 
     // -----------------------------------------------------------------------------------------------------------------
 
-    private ArrayBlockingQueue<Boolean> repaintQueue = new ArrayBlockingQueue<Boolean>(1);
+    private ArrayBlockingQueue<Boolean> repaintQueue = new ArrayBlockingQueue<>(1);
 
     /**
      * Request an repaint manually. This method can called at high frequencies. An internal repaint tread is used to
      * avoid exceeding the FPS value.
      */
     public void repaint() {
-        if (mrt == null) throw new IllegalStateException("automatic repaint is active, no need to call this");
+        if (mrt == null) {
+            throw new IllegalStateException("automatic repaint is active, no need to call this");
+        }
         repaintQueue.offer(Boolean.TRUE);
     }
 
@@ -275,7 +277,7 @@ public class FrameBuffer implements AutoCloseable {
             final int SLEEP_TIME = 1000 / FPS;
 
             try {
-                System.err.println("Run Repaint");
+                logger.info("Run Repaint");
                 while (deviceInfo != 0) {
 
                     repaintQueue.take();

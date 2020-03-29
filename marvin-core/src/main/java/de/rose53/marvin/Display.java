@@ -45,6 +45,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.swing.JFrame;
 
+import de.rose53.marvin.utils.LiPoStatus;
 import org.slf4j.Logger;
 import org.tw.pi.framebuffer.FrameBuffer;
 
@@ -195,6 +196,15 @@ public class Display {
      */
     public void panTilt(short pan, short tilt) {
         data.setPanTilt(pan,tilt);
+        redraw();
+    }
+
+    /**
+     * Displays the {@linkplain LiPoStatus}
+     * @param liPoStatus the {@linkplain LiPoStatus}
+     */
+    public void liPoStatus(LiPoStatus liPoStatus) {
+        data.setLiPoStatus(liPoStatus);
         redraw();
     }
 

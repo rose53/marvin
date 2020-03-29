@@ -3,10 +3,12 @@ package de.rose53.marvin.lcars;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.GeneralPath;
+import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
 
 import de.rose53.marvin.Distance.Place;
+import de.rose53.marvin.utils.LiPoStatus;
 
 public class DataView extends LcarsComponent {
 
@@ -14,6 +16,11 @@ public class DataView extends LcarsComponent {
     private LabeledInfoButton             headingLabeledInfoButton = new LabeledInfoButton("HEADING",LabeledInfoButton.BUTTON_COLOR2);
     private LabeledInfoButton             panLabeledInfoButton = new LabeledInfoButton("PAN",LabeledInfoButton.BUTTON_COLOR1);
     private LabeledInfoButton             tiltLabeledInfoButton = new LabeledInfoButton("TILT",LabeledInfoButton.BUTTON_COLOR1);
+    private LabeledInfoButton             cell1LabeledInfoButton = new LabeledInfoButton("CELL1",LabeledInfoButton.BUTTON_COLOR2);
+    private LabeledInfoButton             cell2LabeledInfoButton = new LabeledInfoButton("CELL2",LabeledInfoButton.BUTTON_COLOR2);
+    private LabeledInfoButton             batteryLabeledInfoButton = new LabeledInfoButton("CHARGE",LabeledInfoButton.BUTTON_COLOR2);
+
+    DecimalFormat f = new DecimalFormat("#0.00");
 
     public DataView() {
         super();
@@ -35,6 +42,12 @@ public class DataView extends LcarsComponent {
     public void setPanTilt(short pan, short tilt) {
         panLabeledInfoButton.setInfo(Short.toString(pan));
         tiltLabeledInfoButton.setInfo(Short.toString(tilt));
+    }
+
+    public void setLiPoStatus(LiPoStatus liPoStatus) {
+        cell1LabeledInfoButton.setInfo(f.format(liPoStatus.getVoltageCell1()));
+        cell2LabeledInfoButton.setInfo(f.format(liPoStatus.getVoltageCell2()));
+        batteryLabeledInfoButton.setInfo(Integer.toString(liPoStatus.getStateOfCharge()));
     }
 
     @Override
@@ -69,6 +82,9 @@ public class DataView extends LcarsComponent {
         Rectangle panRect  = new Rectangle(r.x + FRAME_LARGE_SIZE + SPACE,headingRect.y + BUTTON_LABEL_HEIGHT + SPACE,-1,-1);
         Rectangle tiltRect = new Rectangle(panRect.x + SPACE + LabeledInfoButton.getLabeledInfoButtonWidth(),panRect.y ,-1,-1);
 
+        Rectangle cell1Rect = new Rectangle(r.x + FRAME_LARGE_SIZE + SPACE,panRect.y + BUTTON_LABEL_HEIGHT + SPACE,-1,-1);
+        Rectangle cell2Rect  = new Rectangle(cell1Rect.x + SPACE + LabeledInfoButton.getLabeledInfoButtonWidth(),cell1Rect.y ,-1,-1);
+        Rectangle batteryRect = new Rectangle(cell2Rect.x + SPACE + LabeledInfoButton.getLabeledInfoButtonWidth(),cell2Rect.y ,-1,-1);
 
         distansLabeledInfoButtorns.get(Place.FRONT).draw(g2d,distanceFrontRect);
         distansLabeledInfoButtorns.get(Place.LEFT).draw(g2d,distanceLeftRect);
@@ -78,8 +94,9 @@ public class DataView extends LcarsComponent {
         headingLabeledInfoButton.draw(g2d, headingRect);
         panLabeledInfoButton.draw(g2d, panRect);
         tiltLabeledInfoButton.draw(g2d, tiltRect);
+
+        cell1LabeledInfoButton.draw(g2d,cell1Rect);
+        cell2LabeledInfoButton.draw(g2d,cell2Rect);
+        batteryLabeledInfoButton.draw(g2d,batteryRect);
     }
-
-
-
 }

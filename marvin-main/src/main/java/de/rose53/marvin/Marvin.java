@@ -17,16 +17,11 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import de.rose53.marvin.events.*;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import org.slf4j.Logger;
 
-import de.rose53.marvin.events.DistanceEvent;
-import de.rose53.marvin.events.HeadingEvent;
-import de.rose53.marvin.events.ImageEvent;
-import de.rose53.marvin.events.PanTiltEvent;
-import de.rose53.marvin.events.ReadMecanumCurrentEvent;
-import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
 import de.rose53.marvin.joystick.Joystick;
 import de.rose53.marvin.server.Webserver;
 
@@ -41,10 +36,6 @@ public class Marvin implements Runnable {
     Logger logger;
 
     private boolean running;
-
-    //@Inject
-    //@Any
-    //Instance<PanTiltSensors> panTiltSensors;
 
     @Inject
     @Any
@@ -119,11 +110,6 @@ public class Marvin implements Runnable {
     @Override
     public void run() {
         start();
-
-        // set the servos
-        //PanTiltSensors panTilt = panTiltSensors.select(new HardwareInstance()).get();
-        //panTilt.setPanTilt((short)90,(short)170);
-
         while (running) {
             try {
                 Thread.sleep(500);
@@ -162,6 +148,11 @@ public class Marvin implements Runnable {
         display.panTilt(event.getPan(),event.getTilt());
     }
 
+    public void onLiPoEvent(@Observes LiPoEvent event) {
+        logger.debug("onLiPoEvent: ");
+        display.liPoStatus(event.getLiPoStatus());
+    }
+
     public void onImageEvent(@Observes ImageEvent event) {
         logger.debug("onImageEvent: ");
         display.image(event.getBufferedImage());
@@ -182,14 +173,10 @@ public class Marvin implements Runnable {
         Thread thread = new Thread(marvin);
         thread.start();
 
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                marvin.logger.info("Shutdown Hook is running !");
-                marvin.stop();
-                //weld.shutdown();
-            }
-        });
-
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            marvin.logger.info("Shutdown Hook is running !");
+            marvin.stop();
+        }));
     }
 
 

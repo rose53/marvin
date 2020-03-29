@@ -37,6 +37,8 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
+import de.rose53.marvin.events.*;
+import de.rose53.marvin.platform.message.*;
 import org.slf4j.Logger;
 
 import jssc.SerialPort;
@@ -49,23 +51,6 @@ import de.rose53.marvin.Hardware;
 import de.rose53.marvin.MecanumDrive;
 import de.rose53.marvin.PanTiltServos;
 import de.rose53.marvin.ReadMecanumMotorInfo;
-import de.rose53.marvin.events.DistanceEvent;
-import de.rose53.marvin.events.HeadingEvent;
-import de.rose53.marvin.events.PanTiltEvent;
-import de.rose53.marvin.events.ReadMecanumCurrentEvent;
-import de.rose53.marvin.events.ReadMecanumMotorInfoEvent;
-import de.rose53.marvin.platform.message.CloseMessage;
-import de.rose53.marvin.platform.message.GetMessage;
-import de.rose53.marvin.platform.message.HDGMessage;
-import de.rose53.marvin.platform.message.MECCurrentMessage;
-import de.rose53.marvin.platform.message.MECInfoMessage;
-import de.rose53.marvin.platform.message.MECJoystickMessage;
-import de.rose53.marvin.platform.message.OpenMessage;
-import de.rose53.marvin.platform.message.PanMessage;
-import de.rose53.marvin.platform.message.PanTiltIncMessage;
-import de.rose53.marvin.platform.message.PanTiltInfoMessage;
-import de.rose53.marvin.platform.message.TiltMessage;
-import de.rose53.marvin.platform.message.USMessage;
 
 /**
  * @author rose
@@ -108,6 +93,9 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance
 
     @Inject
     Event<PanTiltEvent> panTiltEvent;
+
+    @Inject
+    Event<LiPoEvent> liPoEvent;
 
     private SerialPort serialPort;
 
@@ -156,21 +144,19 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance
         }
     }
 
-    private boolean isChanged(byte oldValue, byte newValue) {
+    private boolean isNotChanged(byte oldValue, byte newValue) {
         if (newValue < oldValue - 2) {
-            return true;
+            return false;
         }
         if (newValue > oldValue + 2) {
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     @Override
     public void mecanumDrive(byte ch1, byte ch3, byte ch4) {
-        if (    !isChanged(this.ch1,ch1)
-             && !isChanged(this.ch3,ch3)
-             && !isChanged(this.ch4,ch4)) {
+        if (isNotChanged(this.ch1,ch1) && isNotChanged(this.ch3,ch3) && isNotChanged(this.ch4,ch4)) {
             return;
         }
         this.ch1 = ch1;
@@ -191,6 +177,7 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance
             try {
                 TimeUnit.MILLISECONDS.sleep(100);
             } catch (InterruptedException e) {
+                logger.trace("readGetResponse: interrupted");
             }
             GetEventQueueEntry entry = getMessageQueue.peek();
             if (entry != null && messageUid.equalsIgnoreCase(entry.message.getMessageUid())) {
@@ -345,7 +332,7 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance
                 if (event.getEventValue() > 0) {//Check bytes count in the input buffer
 
                     try {
-                        byte buffer[] = serialPort.readBytes(event.getEventValue());
+                        byte[] buffer = serialPort.readBytes(event.getEventValue());
                         logger.trace("serialEvent: buffer = >{}<",buffer.length > 0?new String(buffer):"");
                         for (byte b : buffer) {
                             if (b != '\n') {
@@ -379,9 +366,10 @@ public class MarvinHardware implements Runnable, MecanumDrive, Compass, Distance
                                     } else if (PAN_TILT_INFO == m.getMessageType()) {
                                         PanTiltInfoMessage panTiltMessage = (PanTiltInfoMessage) m;
                                         panTiltEvent.fire(new PanTiltEvent(panTiltMessage.getPan(),panTiltMessage.getTilt()));
+                                    } else if (LIPO_INFO == m.getMessageType()) {
+                                        LiPoInfoMessage liPoInfoMessage = (LiPoInfoMessage) m;
+                                        liPoEvent.fire(new LiPoEvent(liPoInfoMessage.getLiPoStatus()));
                                     }
-
-
                                 }
                             }
                         }

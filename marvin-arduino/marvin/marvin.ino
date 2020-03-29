@@ -27,6 +27,13 @@
 #define PAN_ZERO 75
 #define TILT_ZERO 45
 
+#define CELL1 8
+#define CELL2 9
+#define CELL1_CORRECTION_FACTOR  4.18 / 4.24
+#define CELL2_CORRECTION_FACTOR  4.21 / 4.7
+#define LIPO_READINGS 5
+#define V_REF 5.0
+
 // the following are for external interrupts (connected to the encoder pins)
 #define ENC_MOTOR_FL 0    // equals pin 2
 #define ENC_MOTOR_RL 1    // equals pin 3
@@ -48,6 +55,7 @@ void sendCurrent();
 void sendMotorInfo();
 void sendDistance();
 void sendHeading();
+void sendLipoStatus();
 
 void correctSpeed();
 
@@ -71,6 +79,7 @@ Ticker sendMotorInfoTicker(sendMotorInfo,30000); // sends the actual motor infor
 Ticker correctSpeedTicker(correctSpeed,50); // checks, if the current of a motor is above 2Amps every 2000 ms
 Ticker distanceTicker(sendDistance,2000); // sends the distances every 500 ms
 Ticker headingTicker(sendHeading,2000); // sends the heading every 2000 ms
+Ticker lipoStatusTicker(sendLipoStatus,60000); // sends the lipo status every 60000 ms
 
 void setup() {
 
@@ -103,6 +112,7 @@ void setup() {
     correctSpeedTicker.start();
     distanceTicker.start();
     headingTicker.start();
+    lipoStatusTicker.start();
 }
 
 void loop() {  
@@ -124,6 +134,7 @@ void loop() {
     checkCurrentTicker.update();  
     distanceTicker.update();
     headingTicker.update();
+    lipoStatusTicker.update();
 }
 
 // calculate the checksum:
@@ -176,6 +187,7 @@ void handleMessage(const String& message) {
         dataPos = dataString.indexOf(',', dataPos + 1);
         int ch4 = dataString.substring(tmpDataPos + 1, dataPos).toInt();
         mecanumDrive.setValue(ch1, ch3, ch4);
+        sendMotorInfo(messageUid.c_str());
     } else if (messageType == "GET_MEC_CURR") {
         sendCurrent(messageUid.c_str());
     } else if (messageType == "GET_MEC_INFO") {
