@@ -203,26 +203,30 @@ void handleMessage(const String& message) {
     } else if (messageType == "PAN") {
         int tmpDataPos = dataPos;
         dataPos = dataString.indexOf(',', dataPos + 1);
-        int angle = dataString.substring(tmpDataPos + 1, dataPos).toInt() + PAN_ZERO;
-        servoPan.write(constrain(angle,20,170));
+        int angle = dataString.substring(tmpDataPos + 1, dataPos).toInt() + PAN_ZERO; 
+        angle = constrain(angle,25,125);       
+        servoPan.write(angle);
         sendPanTilt();
     } else if (messageType == "PAN_INC") {
         int tmpDataPos = dataPos;
         dataPos = dataString.indexOf(',', dataPos + 1);
-        int angle = servoPan.read() + dataString.substring(tmpDataPos + 1, dataPos).toInt();
-        servoPan.write(constrain(angle,20,170));
+        int angle = servoPan.read() + dataString.substring(tmpDataPos + 1, dataPos).toInt(); 
+        angle = constrain(angle,25,125);       
+        servoPan.write(angle);
         sendPanTilt();
     } else if (messageType == "TILT") {
         int tmpDataPos = dataPos;
         dataPos = dataString.indexOf(',', dataPos + 1);
         int angle = dataString.substring(tmpDataPos + 1, dataPos).toInt() + TILT_ZERO;
-        servoTilt.write(constrain(angle,20,170));
+        angle = constrain(angle,15,80);       
+        servoTilt.write(constrain(angle,15,80));
         sendPanTilt();
     } else if (messageType == "TILT_INC") {
         int tmpDataPos = dataPos;
         dataPos = dataString.indexOf(',', dataPos + 1);
         int angle = servoTilt.read() + dataString.substring(tmpDataPos + 1, dataPos).toInt();
-        servoTilt.write(constrain(angle,20,170));
+        angle = constrain(angle,15,80);       
+        servoTilt.write(angle);
         sendPanTilt();
     } else if (messageType == "GET_PAN_TILT_INFO") {
         sendPanTilt(messageUid.c_str());
