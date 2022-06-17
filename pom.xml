@@ -15,7 +15,7 @@
         <jmock.version>2.6.0</jmock.version>
         <weld.version>2.3.2.Final</weld.version>
         <jetty.version>9.4.24.v20191120</jetty.version>
-        <resteasy.version>3.0.10.Final</resteasy.version>
+        <resteasy.version>3.0.11.Final</resteasy.version>
     </properties>
 
     <build>
